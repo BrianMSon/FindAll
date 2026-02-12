@@ -359,11 +359,19 @@ public class MainWindowViewModel : ViewModelBase
     public void RebuildFlatDisplayItems()
     {
         var items = new List<object>();
+        int index = 1;
         foreach (var group in GroupedResults)
         {
+            group.DisplayIndex = index++;
             items.Add(group);
             if (group.IsExpanded)
-                items.AddRange(group.Items);
+            {
+                foreach (var item in group.Items)
+                {
+                    item.DisplayIndex = index++;
+                    items.Add(item);
+                }
+            }
         }
         FlatDisplayItems = new ObservableCollection<object>(items);
     }
@@ -470,6 +478,7 @@ public class MainWindowViewModel : ViewModelBase
 
 public class DirectoryGroup : ViewModelBase
 {
+    public int DisplayIndex { get; set; }
     public string Directory { get; set; } = string.Empty;
     public List<SearchResult> Items { get; set; } = new();
 

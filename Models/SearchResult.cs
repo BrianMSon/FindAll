@@ -2,6 +2,7 @@ namespace FindAll.Models;
 
 public class SearchResult
 {
+    public int DisplayIndex { get; set; }
     public string FileName { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
     public string Directory { get; set; } = string.Empty;
