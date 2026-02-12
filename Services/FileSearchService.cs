@@ -47,11 +47,11 @@ public class FileSearchService : IFileSearchService
                 var enumOptions = new EnumerationOptions
                 {
                     IgnoreInaccessible = true,
-                    RecurseSubdirectories = true,
+                    RecurseSubdirectories = false,
                     MatchCasing = MatchCasing.CaseInsensitive
                 };
 
-                var files = Directory.EnumerateFiles(options.SearchPath, "*", enumOptions)
+                var files = EnumerateFilesSkippingSymlinks(options.SearchPath, enumOptions)
                     .Where(f => MatchesGlob(includeMatcher, options.SearchPath, f))
                     .Where(f => !IsExcluded(excludeMatcher, options.SearchPath, f));
 
@@ -152,6 +152,36 @@ public class FileSearchService : IFileSearchService
             }
         }
         return matcher;
+    }
+
+    private static IEnumerable<string> EnumerateFilesSkippingSymlinks(string rootPath, EnumerationOptions enumOptions)
+    {
+        // Enumerate files in current directory
+        IEnumerable<string> files;
+        try { files = Directory.EnumerateFiles(rootPath, "*", enumOptions); }
+        catch { yield break; }
+
+        foreach (var file in files)
+            yield return file;
+
+        // Recurse into subdirectories, skipping symbolic links
+        IEnumerable<string> dirs;
+        try { dirs = Directory.EnumerateDirectories(rootPath); }
+        catch { yield break; }
+
+        foreach (var dir in dirs)
+        {
+            try
+            {
+                var dirInfo = new DirectoryInfo(dir);
+                if (dirInfo.LinkTarget != null) continue;
+                if ((dirInfo.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+            }
+            catch { continue; }
+
+            foreach (var file in EnumerateFilesSkippingSymlinks(dir, enumOptions))
+                yield return file;
+        }
     }
 
     private static bool MatchesGlob(Matcher matcher, string basePath, string filePath)
