@@ -280,7 +280,7 @@
                     <!-- Individual result row -->
                     <DataTemplate DataType="models:SearchResult">
                         <Border Height="24">
-                            <Grid ColumnDefinitions="40,200,80,130,60,*" VerticalAlignment="Center" Margin="20,0,2,0">
+                            <Grid ColumnDefinitions="40,Auto,80,130,60,*" VerticalAlignment="Center" Margin="20,0,2,0">
                                 <TextBlock Grid.Column="0"
                                            Text="{Binding DisplayIndex}"
                                            TextAlignment="Left"
@@ -288,7 +288,6 @@
                                            Margin="0,0,6,0"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding FileName}"
-                                           TextTrimming="CharacterEllipsis"
                                            ToolTip.Tip="{Binding FullPath}"/>
                                 <TextBlock Grid.Column="2"
                                            Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
