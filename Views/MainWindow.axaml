@@ -56,6 +56,13 @@
         <Style Selector="ListBox[Name=ResultsList] ScrollBar[Orientation=Horizontal]:pointerover /template/ Thumb /template/ Border">
             <Setter Property="Background" Value="#808080"/>
         </Style>
+        <!-- Disable hover highlight on ListBox items -->
+        <Style Selector="ListBox[Name=ResultsList] ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ListBox[Name=ResultsList] ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+        </Style>
     </Window.Styles>
 
     <Window.KeyBindings>
@@ -161,7 +168,7 @@
                     VerticalContentAlignment="Center">
                 <TextBlock Text="{Binding IsPaused, Converter={x:Static conv:BoolToTextConverter.PauseResume}}"/>
             </Button>
-            <ProgressBar IsIndeterminate="True"
+            <ProgressBar IsIndeterminate="{Binding !IsPaused}"
                          IsVisible="{Binding IsSearching}"
                          DockPanel.Dock="Left"
                          Width="120"
@@ -282,7 +289,9 @@
                       ResizeDirection="Rows"
                       Height="5"
                       Background="#CBD5E1"
-                      HorizontalAlignment="Stretch"/>
+                      HorizontalAlignment="Stretch"
+                      Focusable="False"
+                      IsTabStop="False"/>
 
         <!-- Row 6: Preview Panel -->
         <Border Grid.Row="6"
@@ -300,14 +309,18 @@
                                Margin="8,4"/>
                 </Border>
                 <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto">
+                              VerticalScrollBarVisibility="Auto"
+                              Focusable="False"
+                              IsTabStop="False">
                     <SelectableTextBlock Text="{Binding PreviewText}"
                                          FontFamily="Consolas, Courier New, monospace"
                                          FontSize="12"
                                          Margin="8,4"
                                          TextWrapping="NoWrap"
                                          SelectionBrush="#3B82F6"
-                                         SelectionForegroundBrush="White"/>
+                                         SelectionForegroundBrush="White"
+                                         Focusable="False"
+                                         IsTabStop="False"/>
                 </ScrollViewer>
             </DockPanel>
         </Border>

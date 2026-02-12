@@ -33,6 +33,25 @@ public partial class MainWindow : Window
                 list.DoubleTapped += OnListDoubleTapped;
                 list.AddHandler(PointerReleasedEvent, OnListPointerReleased, RoutingStrategies.Tunnel);
                 list.AddHandler(KeyDownEvent, OnListKeyDown, RoutingStrategies.Tunnel);
+
+                if (_viewModel != null)
+                {
+                    _viewModel.ResultsUpdated += () =>
+                    {
+                        if (list.SelectedIndex >= 0)
+                        {
+                            var container = list.ContainerFromIndex(list.SelectedIndex);
+                            if (container is ListBoxItem lbi)
+                                lbi.Focus();
+                            else
+                                list.Focus();
+                        }
+                        else
+                        {
+                            list.Focus();
+                        }
+                    };
+                }
             }
 
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>

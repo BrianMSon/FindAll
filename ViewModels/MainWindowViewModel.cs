@@ -137,6 +137,8 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _flatDisplayItems, value);
     }
 
+    public event Action? ResultsUpdated;
+
     public ReactiveCommand<Unit, Unit> SearchCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
     public ReactiveCommand<Unit, Unit> PauseResumeCommand { get; }
@@ -344,6 +346,8 @@ public class MainWindowViewModel : ViewModelBase
                 {
                     SelectedItem = matchToSelect;
                 }
+
+                ResultsUpdated?.Invoke();
             }
             catch (Exception ex)
             {
