@@ -297,7 +297,6 @@
         <Border Grid.Row="6"
                 MinHeight="100"
                 MaxHeight="300"
-                IsVisible="{Binding IsPreviewVisible}"
                 BorderBrush="#94A3B8"
                 BorderThickness="0,1,0,0"
                 Padding="0">
