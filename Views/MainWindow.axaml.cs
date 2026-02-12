@@ -32,6 +32,7 @@ public partial class MainWindow : Window
             {
                 list.DoubleTapped += OnListDoubleTapped;
                 list.AddHandler(PointerReleasedEvent, OnListPointerReleased, RoutingStrategies.Tunnel);
+                list.AddHandler(KeyDownEvent, OnListKeyDown, RoutingStrategies.Tunnel);
             }
 
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
@@ -43,6 +44,63 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Debug.WriteLine($"Error in MainWindow constructor: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+
+    // --- Page Up/Down: move selection by one page ---
+
+    private void OnListKeyDown(object? sender, KeyEventArgs e)
+    {
+        try
+        {
+            if (sender is not ListBox list || _viewModel == null) return;
+
+            var items = _viewModel.FlatDisplayItems;
+            if (items.Count == 0) return;
+
+            int currentIndex = list.SelectedIndex;
+            int lastIndex = items.Count - 1;
+            int targetIndex;
+
+            switch (e.Key)
+            {
+                case Key.PageDown:
+                {
+                    int pageSize = Math.Max(1, (int)(list.Bounds.Height / 24));
+                    targetIndex = currentIndex < 0 ? 0 : Math.Min(lastIndex, currentIndex + pageSize);
+                    break;
+                }
+                case Key.PageUp:
+                {
+                    int pageSize = Math.Max(1, (int)(list.Bounds.Height / 24));
+                    targetIndex = currentIndex <= 0 ? 0 : Math.Max(0, currentIndex - pageSize);
+                    break;
+                }
+                case Key.Home:
+                    targetIndex = 0;
+                    break;
+                case Key.End:
+                    targetIndex = lastIndex;
+                    break;
+                default:
+                    return;
+            }
+
+            list.SelectedIndex = targetIndex;
+            list.ScrollIntoView(items[targetIndex]);
+
+            // Keep focus on the selected item container
+            var container = list.ContainerFromIndex(targetIndex);
+            if (container is ListBoxItem lbi)
+                lbi.Focus();
+            else
+                list.Focus();
+
+            e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error in OnListKeyDown: {ex.Message}");
         }
     }
 
