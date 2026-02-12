@@ -27,6 +27,20 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _filePattern, value);
     }
 
+    private string _excludePattern = string.Empty;
+    public string ExcludePattern
+    {
+        get => _excludePattern;
+        set => this.RaiseAndSetIfChanged(ref _excludePattern, value);
+    }
+
+    private string _fileNameSearch = string.Empty;
+    public string FileNameSearch
+    {
+        get => _fileNameSearch;
+        set => this.RaiseAndSetIfChanged(ref _fileNameSearch, value);
+    }
+
     private string _textSearch = string.Empty;
     public string TextSearch
     {
@@ -90,14 +104,12 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isTextSearch, value);
     }
 
-    public ObservableCollection<SearchResult> Results { get; } = new();
+    // Grouped results: list of DirectoryGroup, each containing its results
+    public ObservableCollection<DirectoryGroup> GroupedResults { get; } = new();
 
     public ReactiveCommand<Unit, Unit> SearchCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
-
-    // Folder browse is handled in code-behind via StorageProvider
-    public Interaction<Unit, string?> BrowseFolderInteraction { get; } = new();
 
     public MainWindowViewModel(IFileSearchService searchService)
     {
@@ -126,29 +138,36 @@ public class MainWindowViewModel : ViewModelBase
 
     private async Task ExecuteSearchAsync()
     {
-        Results.Clear();
+        GroupedResults.Clear();
         IsPreviewVisible = false;
         PreviewText = string.Empty;
+        SelectedResult = null;
         _cts = new CancellationTokenSource();
         IsSearching = true;
         int fileCount = 0;
+        int totalResults = 0;
         StatusText = "Searching...";
 
         var options = new SearchOptions
         {
             SearchPath = SearchPath,
             FilePattern = string.IsNullOrWhiteSpace(FilePattern) ? "*.*" : FilePattern,
+            ExcludePattern = ExcludePattern ?? string.Empty,
+            FileNameSearch = string.IsNullOrWhiteSpace(FileNameSearch) ? null : FileNameSearch,
             TextSearch = string.IsNullOrWhiteSpace(TextSearch) ? null : TextSearch,
             UseRegex = UseRegex,
             CaseSensitive = CaseSensitive
         };
 
         // Validate regex
-        if (options.UseRegex && options.TextSearch != null)
+        if (options.UseRegex)
         {
             try
             {
-                _ = new System.Text.RegularExpressions.Regex(options.TextSearch);
+                if (options.TextSearch != null)
+                    _ = new System.Text.RegularExpressions.Regex(options.TextSearch);
+                if (options.FileNameSearch != null)
+                    _ = new System.Text.RegularExpressions.Regex(options.FileNameSearch);
             }
             catch (System.Text.RegularExpressions.RegexParseException ex)
             {
@@ -158,23 +177,35 @@ public class MainWindowViewModel : ViewModelBase
             }
         }
 
+        // Accumulate results in a dictionary for grouping
+        var groupDict = new Dictionary<string, DirectoryGroup>();
+
         var progress = new Progress<int>(count =>
         {
             fileCount = count;
-            StatusText = $"Searching... {count} files scanned, {Results.Count} matches";
+            StatusText = $"Searching... {count} files scanned, {totalResults} matches";
         });
 
         try
         {
             await foreach (var result in _searchService.SearchAsync(options, progress, _cts.Token))
             {
-                Results.Add(result);
+                totalResults++;
+                var dir = result.Directory;
+                if (!groupDict.TryGetValue(dir, out var group))
+                {
+                    group = new DirectoryGroup { Directory = dir };
+                    groupDict[dir] = group;
+                    GroupedResults.Add(group);
+                }
+                group.Items.Add(result);
+                group.RaiseCountChanged();
             }
-            StatusText = $"Done. {Results.Count} results found ({fileCount} files scanned)";
+            StatusText = $"Done. {totalResults} results in {groupDict.Count} folders ({fileCount} files scanned)";
         }
         catch (OperationCanceledException)
         {
-            StatusText = $"Cancelled. {Results.Count} results found ({fileCount} files scanned)";
+            StatusText = $"Cancelled. {totalResults} results ({fileCount} files scanned)";
         }
         catch (Exception ex)
         {
@@ -217,9 +248,23 @@ public class MainWindowViewModel : ViewModelBase
         }
         else
         {
-            // File-name-only search: show file info
             PreviewText = $"File: {result.FullPath}\nSize: {result.FileSize:N0} bytes\nModified: {result.ModifiedDate:yyyy-MM-dd HH:mm:ss}";
             IsPreviewVisible = true;
         }
+    }
+}
+
+public class DirectoryGroup : ViewModelBase
+{
+    public string Directory { get; set; } = string.Empty;
+    public ObservableCollection<SearchResult> Items { get; } = new();
+
+    public int ItemCount => Items.Count;
+
+    public bool IsExpanded { get; set; } = true;
+
+    public void RaiseCountChanged()
+    {
+        this.RaisePropertyChanged(nameof(ItemCount));
     }
 }

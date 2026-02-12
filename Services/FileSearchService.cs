@@ -16,16 +16,28 @@ public class FileSearchService : IFileSearchService
         var channel = Channel.CreateUnbounded<SearchResult>(
             new UnboundedChannelOptions { SingleReader = true });
 
-        var matcher = BuildGlobMatcher(options.FilePattern);
+        var includeMatcher = BuildGlobMatcher(options.FilePattern, isInclude: true);
+        var excludeMatcher = BuildExcludeMatcher(options.ExcludePattern);
         bool isTextSearch = !string.IsNullOrWhiteSpace(options.TextSearch);
+        bool isFileNameSearch = !string.IsNullOrWhiteSpace(options.FileNameSearch);
 
-        Regex? regex = null;
+        Regex? textRegex = null;
         if (isTextSearch && options.UseRegex)
         {
             var regexOptions = RegexOptions.Compiled;
             if (!options.CaseSensitive)
                 regexOptions |= RegexOptions.IgnoreCase;
-            regex = new Regex(options.TextSearch!, regexOptions);
+            textRegex = new Regex(options.TextSearch!, regexOptions);
+        }
+
+        Regex? fileNameRegex = null;
+        if (isFileNameSearch && options.UseRegex)
+        {
+            var regexOptions = RegexOptions.Compiled;
+            if (!options.CaseSensitive)
+                regexOptions |= RegexOptions.IgnoreCase;
+            try { fileNameRegex = new Regex(options.FileNameSearch!, regexOptions); }
+            catch { fileNameRegex = null; }
         }
 
         _ = Task.Run(async () =>
@@ -40,7 +52,8 @@ public class FileSearchService : IFileSearchService
                 };
 
                 var files = Directory.EnumerateFiles(options.SearchPath, "*", enumOptions)
-                    .Where(f => MatchesGlob(matcher, options.SearchPath, f));
+                    .Where(f => MatchesGlob(includeMatcher, options.SearchPath, f))
+                    .Where(f => !IsExcluded(excludeMatcher, options.SearchPath, f));
 
                 int count = 0;
 
@@ -52,7 +65,7 @@ public class FileSearchService : IFileSearchService
                     },
                     async (filePath, innerCt) =>
                     {
-                        var results = ProcessFile(filePath, options, isTextSearch, regex);
+                        var results = ProcessFile(filePath, options, isTextSearch, isFileNameSearch, textRegex, fileNameRegex);
                         foreach (var result in results)
                         {
                             await channel.Writer.WriteAsync(result, innerCt);
@@ -97,13 +110,46 @@ public class FileSearchService : IFileSearchService
         return lines;
     }
 
-    private static Matcher BuildGlobMatcher(string filePattern)
+    private static Matcher BuildGlobMatcher(string filePattern, bool isInclude)
     {
         var matcher = new Matcher();
         var patterns = filePattern.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var pattern in patterns)
         {
-            matcher.AddInclude(pattern.Contains('/') || pattern.Contains('\\') ? pattern : "**/" + pattern);
+            var p = pattern.Contains('/') || pattern.Contains('\\') ? pattern : "**/" + pattern;
+            if (isInclude)
+                matcher.AddInclude(p);
+            else
+                matcher.AddExclude(p);
+        }
+        return matcher;
+    }
+
+    private static Matcher? BuildExcludeMatcher(string excludePattern)
+    {
+        if (string.IsNullOrWhiteSpace(excludePattern))
+            return null;
+
+        var matcher = new Matcher();
+        matcher.AddInclude("**/*"); // match all first
+        var patterns = excludePattern.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var pattern in patterns)
+        {
+            var p = pattern;
+            // "bin/", "obj/" -> "**/bin/**", "**/obj/**"
+            if (p.EndsWith('/') || p.EndsWith('\\'))
+            {
+                matcher.AddExclude("**/" + p.TrimEnd('/', '\\') + "/**");
+            }
+            else if (!p.Contains('/') && !p.Contains('\\') && !p.Contains('*') && !p.Contains('.'))
+            {
+                // bare directory name like "bin" -> also exclude as directory
+                matcher.AddExclude("**/" + p + "/**");
+            }
+            else
+            {
+                matcher.AddExclude(p.Contains('/') || p.Contains('\\') ? p : "**/" + p);
+            }
         }
         return matcher;
     }
@@ -114,14 +160,41 @@ public class FileSearchService : IFileSearchService
         return matcher.Match(relativePath).HasMatches;
     }
 
+    private static bool IsExcluded(Matcher? excludeMatcher, string basePath, string filePath)
+    {
+        if (excludeMatcher == null) return false;
+        var relativePath = Path.GetRelativePath(basePath, filePath).Replace('\\', '/');
+        return !excludeMatcher.Match(relativePath).HasMatches;
+    }
+
     private static List<SearchResult> ProcessFile(
-        string filePath, SearchOptions options, bool isTextSearch, Regex? regex)
+        string filePath, SearchOptions options,
+        bool isTextSearch, bool isFileNameSearch,
+        Regex? textRegex, Regex? fileNameRegex)
     {
         var results = new List<SearchResult>();
 
         try
         {
             var fileInfo = new FileInfo(filePath);
+
+            // File name search filter
+            if (isFileNameSearch)
+            {
+                bool fileNameMatch;
+                if (fileNameRegex != null)
+                {
+                    fileNameMatch = fileNameRegex.IsMatch(fileInfo.Name);
+                }
+                else
+                {
+                    var comparison = options.CaseSensitive
+                        ? StringComparison.Ordinal
+                        : StringComparison.OrdinalIgnoreCase;
+                    fileNameMatch = fileInfo.Name.Contains(options.FileNameSearch!, comparison);
+                }
+                if (!fileNameMatch) return results;
+            }
 
             if (!isTextSearch)
             {
@@ -140,7 +213,7 @@ public class FileSearchService : IFileSearchService
             if (fileInfo.Length > options.MaxFileSizeBytes) return results;
             if (BinaryFileDetector.IsBinary(filePath)) return results;
 
-            var comparison = options.CaseSensitive
+            var comparison2 = options.CaseSensitive
                 ? StringComparison.Ordinal
                 : StringComparison.OrdinalIgnoreCase;
 
@@ -149,9 +222,9 @@ public class FileSearchService : IFileSearchService
             {
                 lineNum++;
 
-                if (regex != null)
+                if (textRegex != null)
                 {
-                    var match = regex.Match(line);
+                    var match = textRegex.Match(line);
                     if (match.Success)
                     {
                         results.Add(new SearchResult
@@ -170,7 +243,7 @@ public class FileSearchService : IFileSearchService
                 }
                 else
                 {
-                    int idx = line.IndexOf(options.TextSearch!, comparison);
+                    int idx = line.IndexOf(options.TextSearch!, comparison2);
                     if (idx >= 0)
                     {
                         results.Add(new SearchResult

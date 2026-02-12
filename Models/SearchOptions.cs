@@ -4,6 +4,8 @@ public class SearchOptions
 {
     public string SearchPath { get; set; } = string.Empty;
     public string FilePattern { get; set; } = "*.*";
+    public string ExcludePattern { get; set; } = string.Empty;
+    public string? FileNameSearch { get; set; }
     public string? TextSearch { get; set; }
     public bool UseRegex { get; set; }
     public bool CaseSensitive { get; set; }

@@ -1,11 +1,12 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FindAll.ViewModels"
+        xmlns:models="using:FindAll.Models"
         xmlns:conv="using:FindAll.Converters"
         x:Class="FindAll.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="FindAll - File and Text Search"
-        Width="1100" Height="700"
+        Width="1100" Height="750"
         MinWidth="800" MinHeight="500">
 
     <Window.Resources>
@@ -17,37 +18,55 @@
         <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}"/>
     </Window.KeyBindings>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
 
         <!-- Row 0: Search Path -->
         <DockPanel Grid.Row="0" Margin="8,8,8,4">
             <TextBlock Text="Folder:"
                        VerticalAlignment="Center"
-                       Width="50"
+                       Width="55"
                        DockPanel.Dock="Left"/>
             <Button Content="Browse"
                     DockPanel.Dock="Right"
                     Margin="4,0,0,0"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    IsTabStop="False"
+                    Focusable="False"
                     Click="OnBrowseClick"/>
             <TextBox Text="{Binding SearchPath}"
                      Watermark="Enter search folder path..."/>
         </DockPanel>
 
-        <!-- Row 1: Filters -->
-        <DockPanel Grid.Row="1" Margin="8,4,8,4">
-            <TextBlock Text="Filter:"
+        <!-- Row 1: Include / Exclude / FileName -->
+        <Grid Grid.Row="1" Margin="8,4,8,4" ColumnDefinitions="55,150,12,62,150,12,72,*">
+            <TextBlock Grid.Column="0" Text="Filter:"
+                       VerticalAlignment="Center"/>
+            <TextBox Grid.Column="1"
+                     Text="{Binding FilePattern}"
+                     Watermark="*.cs, *.txt"/>
+
+            <TextBlock Grid.Column="3" Text="Exclude:"
                        VerticalAlignment="Center"
-                       Width="50"
-                       DockPanel.Dock="Left"/>
-            <TextBox Text="{Binding FilePattern}"
-                     Width="150"
-                     Watermark="*.cs, *.txt"
-                     DockPanel.Dock="Left"
-                     Margin="0,0,8,0"/>
+                       ToolTip.Tip="Exclude patterns (e.g. *.dll, bin/, obj/, node_modules)"/>
+            <TextBox Grid.Column="4"
+                     Text="{Binding ExcludePattern}"
+                     Watermark="*.dll, bin/, obj/"/>
+
+            <TextBlock Grid.Column="6" Text="Filename:"
+                       VerticalAlignment="Center"
+                       ToolTip.Tip="Search file names (substring or regex)"/>
+            <TextBox Grid.Column="7"
+                     Text="{Binding FileNameSearch}"
+                     Watermark="Search file names..."/>
+        </Grid>
+
+        <!-- Row 2: Text Search -->
+        <DockPanel Grid.Row="2" Margin="8,4,8,4">
             <TextBlock Text="Text:"
                        VerticalAlignment="Center"
-                       DockPanel.Dock="Left"
-                       Margin="8,0,4,0"/>
+                       Width="55"
+                       DockPanel.Dock="Left"/>
             <ToggleButton IsChecked="{Binding CaseSensitive}"
                           Content="Aa"
                           ToolTip.Tip="Case Sensitive"
@@ -55,87 +74,143 @@
                           Width="36" Height="32"
                           Margin="4,0,0,0"
                           FontSize="12"
+                          IsTabStop="False"
+                          Focusable="False"
                           HorizontalContentAlignment="Center"/>
             <ToggleButton IsChecked="{Binding UseRegex}"
                           Content=".*"
-                          ToolTip.Tip="Use Regular Expression"
+                          ToolTip.Tip="Use Regular Expression (applies to Text and Name search)"
                           DockPanel.Dock="Right"
                           Width="36" Height="32"
                           Margin="4,0,0,0"
                           FontSize="12"
                           FontWeight="Bold"
+                          IsTabStop="False"
+                          Focusable="False"
                           HorizontalContentAlignment="Center"/>
             <TextBox Text="{Binding TextSearch}"
                      Watermark="Search text in files..."/>
         </DockPanel>
 
-        <!-- Row 2: Action Bar -->
-        <DockPanel Grid.Row="2" Margin="8,4,8,4">
+        <!-- Row 3: Action Bar with Expand/Collapse -->
+        <DockPanel Grid.Row="3" Margin="8,4,8,4">
             <Button Content="Search"
                     Command="{Binding SearchCommand}"
                     DockPanel.Dock="Left"
                     Width="80"
                     Margin="0,0,4,0"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
                     Classes="accent"/>
             <Button Content="Cancel"
                     Command="{Binding CancelCommand}"
                     DockPanel.Dock="Left"
-                    Width="80"/>
+                    Width="80"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"/>
             <ProgressBar IsIndeterminate="True"
                          IsVisible="{Binding IsSearching}"
                          DockPanel.Dock="Left"
                          Width="120"
                          Height="16"
                          Margin="8,0,0,0"/>
-            <TextBlock Text="{Binding StatusText}"
-                       VerticalAlignment="Center"
-                       HorizontalAlignment="Right"
-                       DockPanel.Dock="Right"
-                       FontSize="12"
-                       Opacity="0.8"/>
+
+            <!-- Expand/Collapse buttons -->
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Margin="4,0,0,0">
+                <TextBlock Text="{Binding StatusText}"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           Opacity="0.8"
+                           Margin="0,0,12,0"/>
+                <Button Content="Expand All"
+                        Click="OnExpandAllClick"
+                        Height="28" FontSize="11"
+                        Padding="8,2"
+                        Margin="0,0,4,0"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False"
+                        Focusable="False"
+                        ToolTip.Tip="Expand all directory groups"/>
+                <Button Content="Collapse All"
+                        Click="OnCollapseAllClick"
+                        Height="28" FontSize="11"
+                        Padding="8,2"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False"
+                        Focusable="False"
+                        ToolTip.Tip="Collapse all directory groups"/>
+            </StackPanel>
         </DockPanel>
 
-        <!-- Row 3: Results DataGrid -->
-        <DataGrid Grid.Row="3"
-                  Name="ResultsGrid"
-                  ItemsSource="{Binding Results}"
-                  SelectedItem="{Binding SelectedResult}"
-                  IsReadOnly="True"
-                  GridLinesVisibility="Horizontal"
-                  BorderThickness="0,1,0,0"
-                  CanUserResizeColumns="True"
-                  CanUserSortColumns="True"
-                  SelectionMode="Single">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="File Name"
-                                    Binding="{Binding FileName}"
-                                    Width="200"/>
-                <DataGridTextColumn Header="Directory"
-                                    Binding="{Binding Directory}"
-                                    Width="*"/>
-                <DataGridTextColumn Header="Size"
-                                    Binding="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
-                                    Width="80"/>
-                <DataGridTextColumn Header="Modified"
-                                    Binding="{Binding ModifiedDate, StringFormat=\{0:yyyy-MM-dd HH:mm\}}"
-                                    Width="130"/>
-                <DataGridTextColumn Header="Line#"
-                                    Binding="{Binding LineNumber}"
-                                    Width="60"/>
-                <DataGridTextColumn Header="Match"
-                                    Binding="{Binding MatchingLine}"
-                                    Width="300"/>
-            </DataGrid.Columns>
-        </DataGrid>
+        <!-- Row 4: Grouped Results (TreeView with directory groups) -->
+        <Border Grid.Row="4" BorderThickness="0,1,0,0" Margin="0">
+            <TreeView Name="ResultsTree"
+                      ItemsSource="{Binding GroupedResults}"
+                      SelectionMode="Single">
+                <TreeView.Styles>
+                    <Style Selector="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="True"/>
+                    </Style>
+                </TreeView.Styles>
+                <TreeView.DataTemplates>
+                    <!-- Directory group template -->
+                    <TreeDataTemplate DataType="vm:DirectoryGroup" ItemsSource="{Binding Items}">
+                        <StackPanel Orientation="Horizontal" Margin="2">
+                            <TextBlock Text="{Binding Directory}"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text=" ("
+                                       Opacity="0.6"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ItemCount}"
+                                       Opacity="0.6"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text=")"
+                                       Opacity="0.6"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </TreeDataTemplate>
+                    <!-- Individual result template -->
+                    <DataTemplate DataType="models:SearchResult">
+                        <Grid ColumnDefinitions="200,80,130,60,*" Margin="2,1">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding FileName}"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip.Tip="{Binding FullPath}"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
+                                       Opacity="0.7"
+                                       Margin="8,0,0,0"/>
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding ModifiedDate, StringFormat=\{0:yyyy-MM-dd HH:mm\}}"
+                                       Opacity="0.7"
+                                       Margin="8,0,0,0"/>
+                            <TextBlock Grid.Column="3"
+                                       Text="{Binding LineNumber}"
+                                       Opacity="0.7"
+                                       Margin="8,0,0,0"/>
+                            <TextBlock Grid.Column="4"
+                                       Text="{Binding MatchingLine}"
+                                       TextTrimming="CharacterEllipsis"
+                                       FontFamily="Consolas, Courier New, monospace"
+                                       FontSize="12"
+                                       Margin="8,0,0,0"/>
+                        </Grid>
+                    </DataTemplate>
+                </TreeView.DataTemplates>
+            </TreeView>
+        </Border>
 
-        <!-- Row 4: GridSplitter -->
-        <GridSplitter Grid.Row="4"
+        <!-- Row 5: GridSplitter -->
+        <GridSplitter Grid.Row="5"
                       ResizeDirection="Rows"
                       Height="4"
                       HorizontalAlignment="Stretch"/>
 
-        <!-- Row 5: Preview Panel -->
-        <Border Grid.Row="5"
+        <!-- Row 6: Preview Panel -->
+        <Border Grid.Row="6"
                 MinHeight="100"
                 MaxHeight="300"
                 IsVisible="{Binding IsPreviewVisible}"
