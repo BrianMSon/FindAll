@@ -191,11 +191,33 @@
                         Click="OnCollapseAllClick"
                         Height="28" FontSize="11"
                         Padding="8,2"
+                        Margin="0,0,8,0"
                         HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center"
                         IsTabStop="False"
                         Focusable="False"
                         ToolTip.Tip="Collapse all directory groups"/>
+                <Button Content="Sort ▲"
+                        Click="OnSortAscendingClick"
+                        IsEnabled="{Binding !IsSearching}"
+                        Height="28" FontSize="11"
+                        Padding="8,2"
+                        Margin="0,0,4,0"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False"
+                        Focusable="False"
+                        ToolTip.Tip="Sort ascending (directory, filename)"/>
+                <Button Content="Sort ▼"
+                        Click="OnSortDescendingClick"
+                        IsEnabled="{Binding !IsSearching}"
+                        Height="28" FontSize="11"
+                        Padding="8,2"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False"
+                        Focusable="False"
+                        ToolTip.Tip="Sort descending (directory, filename)"/>
             </StackPanel>
 
             <!-- StatusText fills remaining space -->

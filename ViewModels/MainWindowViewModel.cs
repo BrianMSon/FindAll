@@ -302,17 +302,38 @@ public class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Save current selection path
+        // Save current selection path and current group order
         var selectedPath = SelectedResult?.FullPath;
+        var currentDirOrder = GroupedResults.Select(g => g.Directory).ToList();
 
-        // Heavy grouping/sorting in background thread
+        // Group results preserving existing order, new dirs appended at end
         var groups = await Task.Run(() =>
-            allResults
+        {
+            var grouped = allResults.ToArray()
                 .GroupBy(r => r.Directory)
-                .OrderBy(g => g.Key)
-                .Select(g => new DirectoryGroup { Directory = g.Key, Items = g.ToList() })
-                .ToList()
-        );
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var orderedGroups = new List<DirectoryGroup>();
+            var processed = new HashSet<string>();
+
+            // Existing dirs in current order
+            foreach (var dir in currentDirOrder)
+            {
+                if (grouped.TryGetValue(dir, out var items))
+                {
+                    orderedGroups.Add(new DirectoryGroup { Directory = dir, Items = items });
+                    processed.Add(dir);
+                }
+            }
+
+            // New dirs appended at end
+            foreach (var kvp in grouped.Where(g => !processed.Contains(g.Key)))
+            {
+                orderedGroups.Add(new DirectoryGroup { Directory = kvp.Key, Items = kvp.Value });
+            }
+
+            return orderedGroups;
+        });
 
         // Update UI on the UI thread - single assignment triggers one PropertyChanged
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -374,6 +395,25 @@ public class MainWindowViewModel : ViewModelBase
             }
         }
         FlatDisplayItems = new ObservableCollection<object>(items);
+    }
+
+    public void SortResults(bool ascending)
+    {
+        var prevSelection = SelectedItem;
+        var sorted = ascending
+            ? GroupedResults.OrderBy(g => g.Directory).ToList()
+            : GroupedResults.OrderByDescending(g => g.Directory).ToList();
+
+        foreach (var group in sorted)
+        {
+            group.Items = ascending
+                ? group.Items.OrderBy(r => r.FileName).ThenBy(r => r.LineNumber).ToList()
+                : group.Items.OrderByDescending(r => r.FileName).ThenByDescending(r => r.LineNumber).ToList();
+        }
+
+        GroupedResults = new ObservableCollection<DirectoryGroup>(sorted);
+        RebuildFlatDisplayItems();
+        RestoreSelection(prevSelection);
     }
 
     public void ToggleGroup(DirectoryGroup group)

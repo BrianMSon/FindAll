@@ -277,6 +277,8 @@ public partial class MainWindow : Window
 
     private void OnExpandAllClick(object? sender, RoutedEventArgs e) => _viewModel?.SetAllGroupsExpanded(true);
     private void OnCollapseAllClick(object? sender, RoutedEventArgs e) => _viewModel?.SetAllGroupsExpanded(false);
+    private void OnSortAscendingClick(object? sender, RoutedEventArgs e) => _viewModel?.SortResults(true);
+    private void OnSortDescendingClick(object? sender, RoutedEventArgs e) => _viewModel?.SortResults(false);
 
     // --- Browse ---
 
