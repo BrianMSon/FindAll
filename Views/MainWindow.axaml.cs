@@ -8,6 +8,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using FindAll.Models;
 using FindAll.Services;
+using FindAll.Helpers;
 using FindAll.ViewModels;
 
 namespace FindAll.Views;
@@ -19,6 +20,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Icon = IconGenerator.CreateWindowIcon();
 
         var searchService = new FileSearchService();
         _viewModel = new MainWindowViewModel(searchService);

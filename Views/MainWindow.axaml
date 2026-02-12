@@ -13,6 +13,28 @@
         <conv:FileSizeConverter x:Key="FileSizeConverter"/>
     </Window.Resources>
 
+    <Window.Styles>
+        <!-- Widen scrollbars in TreeView results and always show -->
+        <Style Selector="TreeView ScrollViewer">
+            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Visible"/>
+        </Style>
+        <!-- Force scrollbar always wide (not thin-on-idle / wide-on-hover) -->
+        <Style Selector="TreeView ScrollBar[Orientation=Vertical]">
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="MinWidth" Value="16"/>
+        </Style>
+        <Style Selector="TreeView ScrollBar[Orientation=Vertical] /template/ Thumb">
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="MinWidth" Value="10"/>
+        </Style>
+        <Style Selector="TreeView ScrollBar[Orientation=Vertical] /template/ Thumb /template/ Border">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="MinWidth" Value="8"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+    </Window.Styles>
+
     <Window.KeyBindings>
         <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}"/>
         <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}"/>
@@ -115,13 +137,8 @@
                          Height="16"
                          Margin="8,0,0,0"/>
 
-            <!-- Expand/Collapse buttons -->
+            <!-- Expand/Collapse buttons (fixed right) -->
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Margin="4,0,0,0">
-                <TextBlock Text="{Binding StatusText}"
-                           VerticalAlignment="Center"
-                           FontSize="12"
-                           Opacity="0.8"
-                           Margin="0,0,12,0"/>
                 <Button Content="Expand All"
                         Click="OnExpandAllClick"
                         Height="28" FontSize="11"
@@ -142,33 +159,43 @@
                         Focusable="False"
                         ToolTip.Tip="Collapse all directory groups"/>
             </StackPanel>
+
+            <!-- StatusText fills remaining space -->
+            <TextBlock Text="{Binding StatusText}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Right"
+                       FontSize="12"
+                       Opacity="0.8"
+                       Margin="8,0,8,0"
+                       TextTrimming="CharacterEllipsis"/>
         </DockPanel>
 
         <!-- Row 4: Grouped Results (TreeView with directory groups) -->
-        <Border Grid.Row="4" BorderThickness="0,1,0,0" Margin="0">
+        <Border Grid.Row="4" BorderBrush="#3B82F6" BorderThickness="0,2,0,0" Margin="0">
             <TreeView Name="ResultsTree"
                       ItemsSource="{Binding GroupedResults}"
                       SelectionMode="Single">
-                <TreeView.Styles>
-                    <Style Selector="TreeViewItem">
-                        <Setter Property="IsExpanded" Value="True"/>
-                    </Style>
-                </TreeView.Styles>
+                <TreeView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel/>
+                    </ItemsPanelTemplate>
+                </TreeView.ItemsPanel>
                 <TreeView.DataTemplates>
                     <!-- Directory group template -->
                     <TreeDataTemplate DataType="vm:DirectoryGroup" ItemsSource="{Binding Items}">
                         <StackPanel Orientation="Horizontal" Margin="2">
                             <TextBlock Text="{Binding Directory}"
                                        FontWeight="SemiBold"
+                                       Foreground="#1D4ED8"
                                        VerticalAlignment="Center"/>
                             <TextBlock Text=" ("
-                                       Opacity="0.6"
+                                       Foreground="#64748B"
                                        VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding ItemCount}"
-                                       Opacity="0.6"
+                                       Foreground="#64748B"
                                        VerticalAlignment="Center"/>
                             <TextBlock Text=")"
-                                       Opacity="0.6"
+                                       Foreground="#64748B"
                                        VerticalAlignment="Center"/>
                         </StackPanel>
                     </TreeDataTemplate>
@@ -177,25 +204,27 @@
                         <Grid ColumnDefinitions="200,80,130,60,*" Margin="2,1">
                             <TextBlock Grid.Column="0"
                                        Text="{Binding FileName}"
+                                       Foreground="#1E40AF"
                                        TextTrimming="CharacterEllipsis"
                                        ToolTip.Tip="{Binding FullPath}"/>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
-                                       Opacity="0.7"
+                                       Foreground="#64748B"
                                        Margin="8,0,0,0"/>
                             <TextBlock Grid.Column="2"
                                        Text="{Binding ModifiedDate, StringFormat=\{0:yyyy-MM-dd HH:mm\}}"
-                                       Opacity="0.7"
+                                       Foreground="#64748B"
                                        Margin="8,0,0,0"/>
                             <TextBlock Grid.Column="3"
                                        Text="{Binding LineNumber}"
-                                       Opacity="0.7"
+                                       Foreground="#7C3AED"
                                        Margin="8,0,0,0"/>
                             <TextBlock Grid.Column="4"
                                        Text="{Binding MatchingLine}"
                                        TextTrimming="CharacterEllipsis"
                                        FontFamily="Consolas, Courier New, monospace"
                                        FontSize="12"
+                                       Foreground="#374151"
                                        Margin="8,0,0,0"/>
                         </Grid>
                     </DataTemplate>
@@ -217,10 +246,12 @@
                 BorderThickness="0,1,0,0"
                 Padding="0">
             <DockPanel>
-                <TextBlock Text="Preview"
-                           FontWeight="SemiBold"
-                           Margin="8,4"
-                           DockPanel.Dock="Top"/>
+                <Border DockPanel.Dock="Top" Background="#EFF6FF" Padding="0">
+                    <TextBlock Text="Preview"
+                               FontWeight="SemiBold"
+                               Foreground="#1D4ED8"
+                               Margin="8,4"/>
+                </Border>
                 <ScrollViewer HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Auto">
                     <TextBlock Text="{Binding PreviewText}"

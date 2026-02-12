@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reactive;
@@ -104,8 +105,12 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isTextSearch, value);
     }
 
-    // Grouped results: list of DirectoryGroup, each containing its results
-    public ObservableCollection<DirectoryGroup> GroupedResults { get; } = new();
+    private ObservableCollection<DirectoryGroup> _groupedResults = new();
+    public ObservableCollection<DirectoryGroup> GroupedResults
+    {
+        get => _groupedResults;
+        set => this.RaiseAndSetIfChanged(ref _groupedResults, value);
+    }
 
     public ReactiveCommand<Unit, Unit> SearchCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
@@ -125,12 +130,10 @@ public class MainWindowViewModel : ViewModelBase
         CancelCommand = ReactiveCommand.Create(ExecuteCancel, canCancel);
         OpenFileCommand = ReactiveCommand.Create(ExecuteOpenFile);
 
-        // Track whether text search is active
         this.WhenAnyValue(x => x.TextSearch)
             .Select(t => !string.IsNullOrWhiteSpace(t))
             .Subscribe(v => IsTextSearch = v);
 
-        // Load preview when selection changes
         this.WhenAnyValue(x => x.SelectedResult)
             .Where(r => r != null)
             .Subscribe(r => LoadPreview(r!));
@@ -138,14 +141,12 @@ public class MainWindowViewModel : ViewModelBase
 
     private async Task ExecuteSearchAsync()
     {
-        GroupedResults.Clear();
+        GroupedResults = new ObservableCollection<DirectoryGroup>();
         IsPreviewVisible = false;
         PreviewText = string.Empty;
         SelectedResult = null;
         _cts = new CancellationTokenSource();
         IsSearching = true;
-        int fileCount = 0;
-        int totalResults = 0;
         StatusText = "Searching...";
 
         var options = new SearchOptions
@@ -159,7 +160,6 @@ public class MainWindowViewModel : ViewModelBase
             CaseSensitive = CaseSensitive
         };
 
-        // Validate regex
         if (options.UseRegex)
         {
             try
@@ -177,35 +177,42 @@ public class MainWindowViewModel : ViewModelBase
             }
         }
 
-        // Accumulate results in a dictionary for grouping
-        var groupDict = new Dictionary<string, DirectoryGroup>();
+        var allResults = new ConcurrentBag<SearchResult>();
+        int fileCount = 0;
+        int resultCount = 0;
 
-        var progress = new Progress<int>(count =>
-        {
-            fileCount = count;
-            StatusText = $"Searching... {count} files scanned, {totalResults} matches";
-        });
+        var progress = new Progress<int>(count => fileCount = count);
 
-        try
+        var searchTask = Task.Run(async () =>
         {
             await foreach (var result in _searchService.SearchAsync(options, progress, _cts.Token))
             {
-                totalResults++;
-                var dir = result.Directory;
-                if (!groupDict.TryGetValue(dir, out var group))
-                {
-                    group = new DirectoryGroup { Directory = dir };
-                    groupDict[dir] = group;
-                    GroupedResults.Add(group);
-                }
-                group.Items.Add(result);
-                group.RaiseCountChanged();
+                allResults.Add(result);
+                Interlocked.Increment(ref resultCount);
             }
-            StatusText = $"Done. {totalResults} results in {groupDict.Count} folders ({fileCount} files scanned)";
+        }, _cts.Token);
+
+        try
+        {
+            // Only update status text during search — no TreeView changes
+            while (!searchTask.IsCompleted)
+            {
+                try { await Task.Delay(200, _cts.Token); }
+                catch (OperationCanceledException) { break; }
+
+                StatusText = $"Searching... {fileCount} files scanned, {Volatile.Read(ref resultCount)} matches";
+            }
+
+            await searchTask;
+
+            StatusText = "Building results...";
+            await BuildGroupedResultsAsync(allResults);
+            StatusText = $"Done. {allResults.Count} results in {GroupedResults.Count} folders ({fileCount} files scanned)";
         }
         catch (OperationCanceledException)
         {
-            StatusText = $"Cancelled. {totalResults} results ({fileCount} files scanned)";
+            await BuildGroupedResultsAsync(allResults);
+            StatusText = $"Cancelled. {allResults.Count} results ({fileCount} files scanned)";
         }
         catch (Exception ex)
         {
@@ -217,6 +224,27 @@ public class MainWindowViewModel : ViewModelBase
             _cts?.Dispose();
             _cts = null;
         }
+    }
+
+    private async Task BuildGroupedResultsAsync(ConcurrentBag<SearchResult> allResults)
+    {
+        if (allResults.IsEmpty)
+        {
+            GroupedResults = new ObservableCollection<DirectoryGroup>();
+            return;
+        }
+
+        // Heavy grouping/sorting work done in background thread
+        var groups = await Task.Run(() =>
+            allResults
+                .GroupBy(r => r.Directory)
+                .OrderBy(g => g.Key)
+                .Select(g => new DirectoryGroup { Directory = g.Key, Items = g.ToList() })
+                .ToList()
+        );
+
+        // Single assignment triggers one TreeView rebuild
+        GroupedResults = new ObservableCollection<DirectoryGroup>(groups);
     }
 
     private void ExecuteCancel()
@@ -257,14 +285,9 @@ public class MainWindowViewModel : ViewModelBase
 public class DirectoryGroup : ViewModelBase
 {
     public string Directory { get; set; } = string.Empty;
-    public ObservableCollection<SearchResult> Items { get; } = new();
+    public List<SearchResult> Items { get; set; } = new();
 
     public int ItemCount => Items.Count;
 
     public bool IsExpanded { get; set; } = true;
-
-    public void RaiseCountChanged()
-    {
-        this.RaisePropertyChanged(nameof(ItemCount));
-    }
 }
