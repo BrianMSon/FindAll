@@ -3,7 +3,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.LogicalTree;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using FindAll.Models;
@@ -19,71 +18,83 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        InitializeComponent();
-        Icon = IconGenerator.CreateWindowIcon();
-
-        var searchService = new FileSearchService();
-        _viewModel = new MainWindowViewModel(searchService);
-        DataContext = _viewModel;
-
-        var tree = this.FindControl<TreeView>("ResultsTree");
-        if (tree != null)
+        try
         {
-            tree.SelectionChanged += OnTreeSelectionChanged;
-            tree.DoubleTapped += OnTreeDoubleTapped;
-            tree.AddHandler(PointerReleasedEvent, OnTreePointerReleased, RoutingStrategies.Tunnel);
+            InitializeComponent();
+            Icon = IconGenerator.CreateWindowIcon();
+
+            var searchService = new FileSearchService();
+            _viewModel = new MainWindowViewModel(searchService);
+            DataContext = _viewModel;
+
+            var list = this.FindControl<ListBox>("ResultsList");
+            if (list != null)
+            {
+                list.DoubleTapped += OnListDoubleTapped;
+                list.AddHandler(PointerReleasedEvent, OnListPointerReleased, RoutingStrategies.Tunnel);
+            }
+
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                var ex = e.ExceptionObject as Exception;
+                Debug.WriteLine($"UNHANDLED EXCEPTION: {ex?.Message}\n{ex?.StackTrace}");
+            };
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error in MainWindow constructor: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
-    // --- Selection ---
+    // --- Double-click: toggle group or open file in Explorer ---
 
-    private void OnTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void OnListDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (_viewModel == null) return;
-        if (e.AddedItems.Count > 0 && e.AddedItems[0] is SearchResult result)
+        try
         {
-            _viewModel.SelectedResult = result;
+            if (e?.Source is not Visual visual) return;
+            var item = GetDataContextFromVisual(visual);
+            if (item == null) return;
+
+            if (item is DirectoryGroup group)
+            {
+                _viewModel?.ToggleGroup(group);
+            }
+            else if (item is SearchResult result && !string.IsNullOrEmpty(result.FullPath))
+            {
+                OpenFileInExplorer(result.FullPath);
+            }
         }
-    }
-
-    // --- Double-click: open in Explorer ---
-
-    private void OnTreeDoubleTapped(object? sender, TappedEventArgs e)
-    {
-        if (e.Source is not Visual visual) return;
-        var item = GetDataContextFromVisual(visual);
-
-        if (item is DirectoryGroup group)
+        catch (Exception ex)
         {
-            OpenFolderInExplorer(group.Directory);
-        }
-        else if (item is SearchResult result)
-        {
-            OpenFileInExplorer(result.FullPath);
+            Debug.WriteLine($"Error in OnListDoubleTapped: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
     // --- Right-click context menu ---
 
-    private void OnTreePointerReleased(object? sender, PointerReleasedEventArgs e)
+    private void OnListPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (e.InitialPressMouseButton != MouseButton.Right) return;
-        if (e.Source is not Visual visual) return;
-
-        var item = GetDataContextFromVisual(visual);
-        var treeViewItem = FindParentTreeViewItem(visual);
-
-        if (item is DirectoryGroup group)
+        try
         {
-            ShowDirectoryContextMenu(group, treeViewItem, e);
+            if (e?.InitialPressMouseButton != MouseButton.Right) return;
+            if (e.Source is not Visual visual) return;
+
+            var item = GetDataContextFromVisual(visual);
+            if (item == null) return;
+
+            if (item is DirectoryGroup group)
+                ShowDirectoryContextMenu(group, e);
+            else if (item is SearchResult result)
+                ShowFileContextMenu(result, e);
         }
-        else if (item is SearchResult result)
+        catch (Exception ex)
         {
-            ShowFileContextMenu(result, treeViewItem, e);
+            Debug.WriteLine($"Error in OnListPointerReleased: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
-    private void ShowDirectoryContextMenu(DirectoryGroup group, TreeViewItem? treeViewItem, PointerReleasedEventArgs e)
+    private void ShowDirectoryContextMenu(DirectoryGroup group, PointerReleasedEventArgs e)
     {
         var menu = new ContextMenu();
 
@@ -93,25 +104,18 @@ public partial class MainWindow : Window
 
         menu.Items.Add(new Separator());
 
-        if (treeViewItem != null)
-        {
-            var expand = new MenuItem { Header = "Expand" };
-            expand.Click += (_, _) => treeViewItem.IsExpanded = true;
-            menu.Items.Add(expand);
-
-            var collapse = new MenuItem { Header = "Collapse" };
-            collapse.Click += (_, _) => treeViewItem.IsExpanded = false;
-            menu.Items.Add(collapse);
-        }
+        var toggle = new MenuItem { Header = group.IsExpanded ? "Collapse" : "Expand" };
+        toggle.Click += (_, _) => _viewModel?.ToggleGroup(group);
+        menu.Items.Add(toggle);
 
         menu.Items.Add(new Separator());
 
         var expandAll = new MenuItem { Header = "Expand All" };
-        expandAll.Click += (_, _) => SetAllExpanded(true);
+        expandAll.Click += (_, _) => _viewModel?.SetAllGroupsExpanded(true);
         menu.Items.Add(expandAll);
 
         var collapseAll = new MenuItem { Header = "Collapse All" };
-        collapseAll.Click += (_, _) => SetAllExpanded(false);
+        collapseAll.Click += (_, _) => _viewModel?.SetAllGroupsExpanded(false);
         menu.Items.Add(collapseAll);
 
         menu.Items.Add(new Separator());
@@ -124,10 +128,10 @@ public partial class MainWindow : Window
         };
         menu.Items.Add(copyPath);
 
-        ShowContextMenuAt(menu, e);
+        ShowContextMenuAt(menu);
     }
 
-    private void ShowFileContextMenu(SearchResult result, TreeViewItem? treeViewItem, PointerReleasedEventArgs e)
+    private void ShowFileContextMenu(SearchResult result, PointerReleasedEventArgs e)
     {
         var menu = new ContextMenu();
 
@@ -145,27 +149,22 @@ public partial class MainWindow : Window
 
         menu.Items.Add(new Separator());
 
-        // Find parent TreeViewItem (directory group level)
-        var parentGroupItem = FindParentGroupTreeViewItem(treeViewItem);
-        if (parentGroupItem != null)
+        var parentGroup = _viewModel?.GroupedResults.FirstOrDefault(g => g.Items.Contains(result));
+        if (parentGroup != null)
         {
-            var expand = new MenuItem { Header = "Expand Group" };
-            expand.Click += (_, _) => parentGroupItem.IsExpanded = true;
-            menu.Items.Add(expand);
-
-            var collapse = new MenuItem { Header = "Collapse Group" };
-            collapse.Click += (_, _) => parentGroupItem.IsExpanded = false;
-            menu.Items.Add(collapse);
+            var toggle = new MenuItem { Header = parentGroup.IsExpanded ? "Collapse Group" : "Expand Group" };
+            toggle.Click += (_, _) => _viewModel?.ToggleGroup(parentGroup);
+            menu.Items.Add(toggle);
 
             menu.Items.Add(new Separator());
         }
 
         var expandAll = new MenuItem { Header = "Expand All" };
-        expandAll.Click += (_, _) => SetAllExpanded(true);
+        expandAll.Click += (_, _) => _viewModel?.SetAllGroupsExpanded(true);
         menu.Items.Add(expandAll);
 
         var collapseAll = new MenuItem { Header = "Collapse All" };
-        collapseAll.Click += (_, _) => SetAllExpanded(false);
+        collapseAll.Click += (_, _) => _viewModel?.SetAllGroupsExpanded(false);
         menu.Items.Add(collapseAll);
 
         menu.Items.Add(new Separator());
@@ -186,36 +185,21 @@ public partial class MainWindow : Window
         };
         menu.Items.Add(copyName);
 
-        ShowContextMenuAt(menu, e);
+        ShowContextMenuAt(menu);
     }
 
-    private void ShowContextMenuAt(ContextMenu menu, PointerReleasedEventArgs e)
+    private void ShowContextMenuAt(ContextMenu menu)
     {
-        var tree = this.FindControl<TreeView>("ResultsTree");
-        if (tree == null) return;
-        menu.PlacementTarget = tree;
-        menu.Open(tree);
+        var list = this.FindControl<ListBox>("ResultsList");
+        if (list == null) return;
+        menu.PlacementTarget = list;
+        menu.Open(list);
     }
 
     // --- Expand All / Collapse All buttons ---
 
-    private void OnExpandAllClick(object? sender, RoutedEventArgs e) => SetAllExpanded(true);
-    private void OnCollapseAllClick(object? sender, RoutedEventArgs e) => SetAllExpanded(false);
-
-    private void SetAllExpanded(bool expanded)
-    {
-        var tree = this.FindControl<TreeView>("ResultsTree");
-        if (tree == null) return;
-
-        foreach (var item in tree.GetLogicalDescendants().OfType<TreeViewItem>())
-        {
-            // Only top-level items (directory groups)
-            if (item.DataContext is DirectoryGroup)
-            {
-                item.IsExpanded = expanded;
-            }
-        }
-    }
+    private void OnExpandAllClick(object? sender, RoutedEventArgs e) => _viewModel?.SetAllGroupsExpanded(true);
+    private void OnCollapseAllClick(object? sender, RoutedEventArgs e) => _viewModel?.SetAllGroupsExpanded(false);
 
     // --- Browse ---
 
@@ -223,8 +207,26 @@ public partial class MainWindow : Window
     {
         try
         {
-            var folders = await StorageProvider.OpenFolderPickerAsync(
-                new FolderPickerOpenOptions { Title = "Select Search Folder" });
+            var options = new FolderPickerOpenOptions { Title = "Select Search Folder" };
+
+            if (_viewModel != null && !string.IsNullOrWhiteSpace(_viewModel.SearchPath))
+            {
+                var currentPath = _viewModel.SearchPath;
+                if (Directory.Exists(currentPath))
+                {
+                    try
+                    {
+                        var folder = await StorageProvider.TryGetFolderFromPathAsync(currentPath);
+                        if (folder != null)
+                        {
+                            options.SuggestedStartLocation = folder;
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            var folders = await StorageProvider.OpenFolderPickerAsync(options);
 
             if (folders.Count > 0 && _viewModel != null)
             {
@@ -241,17 +243,13 @@ public partial class MainWindow : Window
         }
     }
 
-    // --- Helper: open file / folder in Explorer ---
+    // --- Helpers ---
 
     private static void OpenFile(string filePath)
     {
         try
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = filePath,
-                UseShellExecute = true
-            });
+            Process.Start(new ProcessStartInfo { FileName = filePath, UseShellExecute = true });
         }
         catch { }
     }
@@ -261,19 +259,13 @@ public partial class MainWindow : Window
         try
         {
             if (OperatingSystem.IsWindows())
-            {
                 Process.Start("explorer.exe", $"/select,\"{filePath}\"");
-            }
             else if (OperatingSystem.IsMacOS())
-            {
                 Process.Start("open", $"-R \"{filePath}\"");
-            }
             else
             {
-                // Linux: open parent directory
                 var dir = Path.GetDirectoryName(filePath);
-                if (dir != null)
-                    Process.Start("xdg-open", dir);
+                if (dir != null) Process.Start("xdg-open", dir);
             }
         }
         catch { }
@@ -284,63 +276,23 @@ public partial class MainWindow : Window
         try
         {
             if (OperatingSystem.IsWindows())
-            {
                 Process.Start("explorer.exe", $"\"{folderPath}\"");
-            }
             else if (OperatingSystem.IsMacOS())
-            {
                 Process.Start("open", folderPath);
-            }
             else
-            {
                 Process.Start("xdg-open", folderPath);
-            }
         }
         catch { }
     }
 
-    // --- Helper: find data context from visual tree ---
-
     private static object? GetDataContextFromVisual(Visual visual)
     {
-        // Walk up to find the TreeViewItem and get its DataContext
         var current = visual;
         while (current != null)
         {
-            if (current is TreeViewItem tvi)
-                return tvi.DataContext;
+            if (current is ListBoxItem lbi)
+                return lbi.DataContext;
             current = current.GetVisualParent() as Visual;
-        }
-        return null;
-    }
-
-    private static TreeViewItem? FindParentTreeViewItem(Visual visual)
-    {
-        var current = visual;
-        while (current != null)
-        {
-            if (current is TreeViewItem tvi)
-                return tvi;
-            current = current.GetVisualParent() as Visual;
-        }
-        return null;
-    }
-
-    private static TreeViewItem? FindParentGroupTreeViewItem(TreeViewItem? childItem)
-    {
-        if (childItem == null) return null;
-
-        // If this item is already a directory group, return it
-        if (childItem.DataContext is DirectoryGroup)
-            return childItem;
-
-        // Walk up to find the parent TreeViewItem that is a DirectoryGroup
-        var current = childItem.GetVisualParent();
-        while (current != null)
-        {
-            if (current is TreeViewItem tvi && tvi.DataContext is DirectoryGroup)
-                return tvi;
-            current = current.GetVisualParent();
         }
         return null;
     }

@@ -14,7 +14,7 @@ public class MainWindowViewModel : ViewModelBase
     private readonly IFileSearchService _searchService;
     private CancellationTokenSource? _cts;
 
-    private string _searchPath = string.Empty;
+    private string _searchPath = Environment.CurrentDirectory;
     public string SearchPath
     {
         get => _searchPath;
@@ -70,6 +70,13 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isSearching, value);
     }
 
+    private bool _isPaused;
+    public bool IsPaused
+    {
+        get => _isPaused;
+        set => this.RaiseAndSetIfChanged(ref _isPaused, value);
+    }
+
     private string _statusText = "Ready";
     public string StatusText
     {
@@ -82,6 +89,17 @@ public class MainWindowViewModel : ViewModelBase
     {
         get => _selectedResult;
         set => this.RaiseAndSetIfChanged(ref _selectedResult, value);
+    }
+
+    private object? _selectedItem;
+    public object? SelectedItem
+    {
+        get => _selectedItem;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedItem, value);
+            SelectedResult = value as SearchResult;
+        }
     }
 
     private string _previewText = string.Empty;
@@ -112,8 +130,16 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _groupedResults, value);
     }
 
+    private ObservableCollection<object> _flatDisplayItems = new();
+    public ObservableCollection<object> FlatDisplayItems
+    {
+        get => _flatDisplayItems;
+        set => this.RaiseAndSetIfChanged(ref _flatDisplayItems, value);
+    }
+
     public ReactiveCommand<Unit, Unit> SearchCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
+    public ReactiveCommand<Unit, Unit> PauseResumeCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
 
     public MainWindowViewModel(IFileSearchService searchService)
@@ -125,9 +151,11 @@ public class MainWindowViewModel : ViewModelBase
             (path, searching) => !string.IsNullOrWhiteSpace(path) && !searching);
 
         var canCancel = this.WhenAnyValue(x => x.IsSearching);
+        var canPauseResume = this.WhenAnyValue(x => x.IsSearching);
 
         SearchCommand = ReactiveCommand.CreateFromTask(ExecuteSearchAsync, canSearch);
         CancelCommand = ReactiveCommand.Create(ExecuteCancel, canCancel);
+        PauseResumeCommand = ReactiveCommand.Create(ExecutePauseResume, canPauseResume);
         OpenFileCommand = ReactiveCommand.Create(ExecuteOpenFile);
 
         this.WhenAnyValue(x => x.TextSearch)
@@ -136,17 +164,29 @@ public class MainWindowViewModel : ViewModelBase
 
         this.WhenAnyValue(x => x.SelectedResult)
             .Where(r => r != null)
-            .Subscribe(r => LoadPreview(r!));
+            .Subscribe(r =>
+            {
+                try
+                {
+                    LoadPreview(r!);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error in LoadPreview subscription: {ex.Message}");
+                }
+            });
     }
 
     private async Task ExecuteSearchAsync()
     {
         GroupedResults = new ObservableCollection<DirectoryGroup>();
+        FlatDisplayItems = new ObservableCollection<object>();
         IsPreviewVisible = false;
         PreviewText = string.Empty;
-        SelectedResult = null;
+        SelectedItem = null;
         _cts = new CancellationTokenSource();
         IsSearching = true;
+        IsPaused = false;
         StatusText = "Searching...";
 
         var options = new SearchOptions
@@ -181,7 +221,11 @@ public class MainWindowViewModel : ViewModelBase
         int fileCount = 0;
         int resultCount = 0;
 
-        var progress = new Progress<int>(count => fileCount = count);
+        // Use lightweight counter instead of Progress<T> to avoid flooding UI thread
+        var progress = new Progress<int>(count =>
+        {
+            Volatile.Write(ref fileCount, count);
+        });
 
         var searchTask = Task.Run(async () =>
         {
@@ -194,24 +238,45 @@ public class MainWindowViewModel : ViewModelBase
 
         try
         {
-            // Only update status text during search — no TreeView changes
+            // Periodically refresh results and status during search
             while (!searchTask.IsCompleted)
             {
-                try { await Task.Delay(200, _cts.Token); }
-                catch (OperationCanceledException) { break; }
+                // Wait up to 2 seconds, checking completion every 100ms
+                for (int i = 0; i < 20; i++)
+                {
+                    if (searchTask.IsCompleted) break;
 
-                StatusText = $"Searching... {fileCount} files scanned, {Volatile.Read(ref resultCount)} matches";
+                    if (IsPaused)
+                    {
+                        StatusText = $"Paused. {Volatile.Read(ref fileCount)} files scanned, {Volatile.Read(ref resultCount)} matches";
+                        while (IsPaused && !_cts.Token.IsCancellationRequested)
+                        {
+                            await Task.Delay(100, CancellationToken.None);
+                        }
+                    }
+
+                    try { await Task.Delay(100, _cts.Token); }
+                    catch (OperationCanceledException) { break; }
+                }
+
+                // Update status text once per cycle (every ~2s) instead of per-file
+                var fc = Volatile.Read(ref fileCount);
+                var rc = Volatile.Read(ref resultCount);
+                if (!IsPaused)
+                {
+                    StatusText = $"Searching... {fc} files scanned, {rc} matches";
+                    await BuildGroupedResultsAsync(allResults, fc);
+                }
             }
 
             await searchTask;
 
-            StatusText = "Building results...";
-            await BuildGroupedResultsAsync(allResults);
+            await BuildGroupedResultsAsync(allResults, fileCount);
             StatusText = $"Done. {allResults.Count} results in {GroupedResults.Count} folders ({fileCount} files scanned)";
         }
         catch (OperationCanceledException)
         {
-            await BuildGroupedResultsAsync(allResults);
+            await BuildGroupedResultsAsync(allResults, fileCount);
             StatusText = $"Cancelled. {allResults.Count} results ({fileCount} files scanned)";
         }
         catch (Exception ex)
@@ -221,20 +286,24 @@ public class MainWindowViewModel : ViewModelBase
         finally
         {
             IsSearching = false;
+            IsPaused = false;
             _cts?.Dispose();
             _cts = null;
         }
     }
 
-    private async Task BuildGroupedResultsAsync(ConcurrentBag<SearchResult> allResults)
+    private async Task BuildGroupedResultsAsync(ConcurrentBag<SearchResult> allResults, int fileCount)
     {
         if (allResults.IsEmpty)
         {
-            GroupedResults = new ObservableCollection<DirectoryGroup>();
+            StatusText = $"Searching... {fileCount} files scanned, 0 matches";
             return;
         }
 
-        // Heavy grouping/sorting work done in background thread
+        // Save current selection path
+        var selectedPath = SelectedResult?.FullPath;
+
+        // Heavy grouping/sorting in background thread
         var groups = await Task.Run(() =>
             allResults
                 .GroupBy(r => r.Directory)
@@ -243,13 +312,96 @@ public class MainWindowViewModel : ViewModelBase
                 .ToList()
         );
 
-        // Single assignment triggers one TreeView rebuild
-        GroupedResults = new ObservableCollection<DirectoryGroup>(groups);
+        // Update UI on the UI thread - single assignment triggers one PropertyChanged
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            try
+            {
+                GroupedResults = new ObservableCollection<DirectoryGroup>(groups);
+                RebuildFlatDisplayItems();
+
+                StatusText = $"Searching... {fileCount} files scanned, {allResults.Count} matches";
+
+                // Restore or set selection
+                SearchResult? matchToSelect = null;
+
+                if (!string.IsNullOrEmpty(selectedPath))
+                {
+                    foreach (var group in GroupedResults)
+                    {
+                        matchToSelect = group.Items.FirstOrDefault(r => r.FullPath == selectedPath);
+                        if (matchToSelect != null)
+                            break;
+                    }
+                }
+
+                if (matchToSelect == null && GroupedResults.Count > 0 && GroupedResults[0].Items.Count > 0)
+                {
+                    matchToSelect = GroupedResults[0].Items[0];
+                }
+
+                if (matchToSelect != null)
+                {
+                    SelectedItem = matchToSelect;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating results: {ex.Message}");
+            }
+        });
+    }
+
+    public void RebuildFlatDisplayItems()
+    {
+        var items = new List<object>();
+        foreach (var group in GroupedResults)
+        {
+            items.Add(group);
+            if (group.IsExpanded)
+                items.AddRange(group.Items);
+        }
+        FlatDisplayItems = new ObservableCollection<object>(items);
+    }
+
+    public void ToggleGroup(DirectoryGroup group)
+    {
+        var prevSelection = SelectedItem;
+        group.IsExpanded = !group.IsExpanded;
+        RebuildFlatDisplayItems();
+        RestoreSelection(prevSelection);
+    }
+
+    public void SetAllGroupsExpanded(bool expanded)
+    {
+        var prevSelection = SelectedItem;
+        foreach (var g in GroupedResults)
+            g.IsExpanded = expanded;
+        RebuildFlatDisplayItems();
+        RestoreSelection(prevSelection);
+    }
+
+    private void RestoreSelection(object? prevSelection)
+    {
+        if (prevSelection == null) return;
+        if (FlatDisplayItems.Contains(prevSelection))
+            SelectedItem = prevSelection;
+        else if (prevSelection is SearchResult sr)
+        {
+            var parentGroup = GroupedResults.FirstOrDefault(g => g.Items.Contains(sr));
+            if (parentGroup != null)
+                SelectedItem = parentGroup;
+        }
     }
 
     private void ExecuteCancel()
     {
         _cts?.Cancel();
+    }
+
+    private void ExecutePauseResume()
+    {
+        IsPaused = !IsPaused;
     }
 
     private void ExecuteOpenFile()
@@ -268,16 +420,46 @@ public class MainWindowViewModel : ViewModelBase
 
     private void LoadPreview(SearchResult result)
     {
-        if (result.LineNumber.HasValue)
+        try
         {
-            var lines = _searchService.GetContextLines(result.FullPath, result.LineNumber.Value);
-            PreviewText = string.Join(Environment.NewLine, lines);
-            IsPreviewVisible = true;
+            if (result == null)
+            {
+                IsPreviewVisible = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(result.FullPath))
+            {
+                PreviewText = "Invalid file path";
+                IsPreviewVisible = true;
+                return;
+            }
+
+            if (result.LineNumber.HasValue)
+            {
+                var lines = _searchService?.GetContextLines(result.FullPath, result.LineNumber.Value);
+                if (lines != null && lines.Any())
+                {
+                    PreviewText = string.Join(Environment.NewLine, lines);
+                    IsPreviewVisible = true;
+                }
+                else
+                {
+                    PreviewText = "No preview available";
+                    IsPreviewVisible = true;
+                }
+            }
+            else
+            {
+                PreviewText = $"File: {result.FullPath}\nSize: {result.FileSize:N0} bytes\nModified: {result.ModifiedDate:yyyy-MM-dd HH:mm:ss}";
+                IsPreviewVisible = true;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            PreviewText = $"File: {result.FullPath}\nSize: {result.FileSize:N0} bytes\nModified: {result.ModifiedDate:yyyy-MM-dd HH:mm:ss}";
+            PreviewText = $"Error loading preview: {ex.Message}";
             IsPreviewVisible = true;
+            System.Diagnostics.Debug.WriteLine($"LoadPreview error: {ex.Message}\n{ex.StackTrace}");
         }
     }
 }
@@ -289,5 +471,10 @@ public class DirectoryGroup : ViewModelBase
 
     public int ItemCount => Items.Count;
 
-    public bool IsExpanded { get; set; } = true;
+    private bool _isExpanded = true;
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => this.RaiseAndSetIfChanged(ref _isExpanded, value);
+    }
 }
