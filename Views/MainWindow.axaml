@@ -1,0 +1,160 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FindAll.ViewModels"
+        xmlns:conv="using:FindAll.Converters"
+        x:Class="FindAll.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="FindAll - File and Text Search"
+        Width="1100" Height="700"
+        MinWidth="800" MinHeight="500">
+
+    <Window.Resources>
+        <conv:FileSizeConverter x:Key="FileSizeConverter"/>
+    </Window.Resources>
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}"/>
+        <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}"/>
+    </Window.KeyBindings>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+
+        <!-- Row 0: Search Path -->
+        <DockPanel Grid.Row="0" Margin="8,8,8,4">
+            <TextBlock Text="Folder:"
+                       VerticalAlignment="Center"
+                       Width="50"
+                       DockPanel.Dock="Left"/>
+            <Button Content="Browse"
+                    DockPanel.Dock="Right"
+                    Margin="4,0,0,0"
+                    Click="OnBrowseClick"/>
+            <TextBox Text="{Binding SearchPath}"
+                     Watermark="Enter search folder path..."/>
+        </DockPanel>
+
+        <!-- Row 1: Filters -->
+        <DockPanel Grid.Row="1" Margin="8,4,8,4">
+            <TextBlock Text="Filter:"
+                       VerticalAlignment="Center"
+                       Width="50"
+                       DockPanel.Dock="Left"/>
+            <TextBox Text="{Binding FilePattern}"
+                     Width="150"
+                     Watermark="*.cs, *.txt"
+                     DockPanel.Dock="Left"
+                     Margin="0,0,8,0"/>
+            <TextBlock Text="Text:"
+                       VerticalAlignment="Center"
+                       DockPanel.Dock="Left"
+                       Margin="8,0,4,0"/>
+            <ToggleButton IsChecked="{Binding CaseSensitive}"
+                          Content="Aa"
+                          ToolTip.Tip="Case Sensitive"
+                          DockPanel.Dock="Right"
+                          Width="36" Height="32"
+                          Margin="4,0,0,0"
+                          FontSize="12"
+                          HorizontalContentAlignment="Center"/>
+            <ToggleButton IsChecked="{Binding UseRegex}"
+                          Content=".*"
+                          ToolTip.Tip="Use Regular Expression"
+                          DockPanel.Dock="Right"
+                          Width="36" Height="32"
+                          Margin="4,0,0,0"
+                          FontSize="12"
+                          FontWeight="Bold"
+                          HorizontalContentAlignment="Center"/>
+            <TextBox Text="{Binding TextSearch}"
+                     Watermark="Search text in files..."/>
+        </DockPanel>
+
+        <!-- Row 2: Action Bar -->
+        <DockPanel Grid.Row="2" Margin="8,4,8,4">
+            <Button Content="Search"
+                    Command="{Binding SearchCommand}"
+                    DockPanel.Dock="Left"
+                    Width="80"
+                    Margin="0,0,4,0"
+                    Classes="accent"/>
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    DockPanel.Dock="Left"
+                    Width="80"/>
+            <ProgressBar IsIndeterminate="True"
+                         IsVisible="{Binding IsSearching}"
+                         DockPanel.Dock="Left"
+                         Width="120"
+                         Height="16"
+                         Margin="8,0,0,0"/>
+            <TextBlock Text="{Binding StatusText}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Right"
+                       DockPanel.Dock="Right"
+                       FontSize="12"
+                       Opacity="0.8"/>
+        </DockPanel>
+
+        <!-- Row 3: Results DataGrid -->
+        <DataGrid Grid.Row="3"
+                  Name="ResultsGrid"
+                  ItemsSource="{Binding Results}"
+                  SelectedItem="{Binding SelectedResult}"
+                  IsReadOnly="True"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="0,1,0,0"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="True"
+                  SelectionMode="Single">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="File Name"
+                                    Binding="{Binding FileName}"
+                                    Width="200"/>
+                <DataGridTextColumn Header="Directory"
+                                    Binding="{Binding Directory}"
+                                    Width="*"/>
+                <DataGridTextColumn Header="Size"
+                                    Binding="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
+                                    Width="80"/>
+                <DataGridTextColumn Header="Modified"
+                                    Binding="{Binding ModifiedDate, StringFormat=\{0:yyyy-MM-dd HH:mm\}}"
+                                    Width="130"/>
+                <DataGridTextColumn Header="Line#"
+                                    Binding="{Binding LineNumber}"
+                                    Width="60"/>
+                <DataGridTextColumn Header="Match"
+                                    Binding="{Binding MatchingLine}"
+                                    Width="300"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Row 4: GridSplitter -->
+        <GridSplitter Grid.Row="4"
+                      ResizeDirection="Rows"
+                      Height="4"
+                      HorizontalAlignment="Stretch"/>
+
+        <!-- Row 5: Preview Panel -->
+        <Border Grid.Row="5"
+                MinHeight="100"
+                MaxHeight="300"
+                IsVisible="{Binding IsPreviewVisible}"
+                BorderThickness="0,1,0,0"
+                Padding="0">
+            <DockPanel>
+                <TextBlock Text="Preview"
+                           FontWeight="SemiBold"
+                           Margin="8,4"
+                           DockPanel.Dock="Top"/>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding PreviewText}"
+                               FontFamily="Consolas, Courier New, monospace"
+                               FontSize="12"
+                               Margin="8,4"
+                               TextWrapping="NoWrap"/>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>
