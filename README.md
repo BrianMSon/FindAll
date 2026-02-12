@@ -1,2 +1,2 @@
 # FindAll
-Find All files and text in files
+Find All file Name and Text in files
