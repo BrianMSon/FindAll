@@ -54,6 +54,9 @@ public partial class MainWindow : Window
                 }
             }
 
+            AddHandler(DragDrop.DropEvent, OnDrop);
+            AddHandler(DragDrop.DragOverEvent, OnDragOver);
+
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
                 var ex = e.ExceptionObject as Exception;
@@ -433,6 +436,46 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Debug.WriteLine($"Error in OnCopyAllClick: {ex.Message}");
+        }
+    }
+
+    // --- Drag & Drop ---
+
+    private void OnDragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = e.Data.Contains(DataFormats.Files)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+    }
+
+    private void OnDrop(object? sender, DragEventArgs e)
+    {
+        try
+        {
+            if (_viewModel == null || !e.Data.Contains(DataFormats.Files)) return;
+
+            var files = e.Data.GetFiles();
+            if (files == null) return;
+
+            foreach (var item in files)
+            {
+                var path = item.TryGetLocalPath();
+                if (path == null) continue;
+
+                // If it's a file, use its parent directory
+                if (File.Exists(path))
+                    path = Path.GetDirectoryName(path);
+
+                if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+                {
+                    _viewModel.SearchPath = path;
+                    break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error in OnDrop: {ex.Message}");
         }
     }
 
