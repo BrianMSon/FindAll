@@ -317,13 +317,17 @@ public partial class MainWindow : Window
 
     // --- Expand All / Collapse All buttons ---
 
-    private void OnExpandAllClick(object? sender, RoutedEventArgs e) => _viewModel?.SetAllGroupsExpanded(true);
-    private void OnCollapseAllClick(object? sender, RoutedEventArgs e) => _viewModel?.SetAllGroupsExpanded(false);
+    private void OnExpandCollapseToggleClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null) return;
+        _viewModel.SetAllGroupsExpanded(!_viewModel.AllExpanded);
+        _viewModel.AllExpanded = !_viewModel.AllExpanded;
+    }
     private void OnSortToggleClick(object? sender, RoutedEventArgs e)
     {
         if (_viewModel == null) return;
-        _viewModel.SortResults(_viewModel.SortAscending);
         _viewModel.SortAscending = !_viewModel.SortAscending;
+        _viewModel.SortResults(_viewModel.SortAscending);
 
         var list = this.FindControl<ListBox>("ResultsList");
         if (list != null)
@@ -339,6 +343,36 @@ public partial class MainWindow : Window
             }
             else
                 list.Focus();
+        }
+    }
+
+    private async void OnCopyVisibleClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_viewModel == null || Clipboard == null) return;
+
+            var sb = new System.Text.StringBuilder();
+            foreach (var item in _viewModel.FlatDisplayItems)
+            {
+                if (item is DirectoryGroup group)
+                {
+                    sb.AppendLine(group.Directory);
+                }
+                else if (item is SearchResult result)
+                {
+                    if (result.LineNumber.HasValue)
+                        sb.AppendLine($"\t{result.FileName}\t{result.LineNumber}\t{result.MatchingLine}");
+                    else
+                        sb.AppendLine($"\t{result.FileName}");
+                }
+            }
+
+            await Clipboard.SetTextAsync(sb.ToString());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error in OnCopyVisibleClick: {ex.Message}");
         }
     }
 

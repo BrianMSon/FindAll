@@ -17,6 +17,12 @@ public class BoolToTextConverter : IValueConverter
         FalseText = "Sort ▼"
     };
 
+    public static readonly BoolToTextConverter ExpandCollapse = new()
+    {
+        TrueText = "▼",
+        FalseText = "▶"
+    };
+
     public string TrueText { get; set; } = "True";
     public string FalseText { get; set; } = "False";
 

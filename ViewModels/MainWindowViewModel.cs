@@ -123,7 +123,14 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isPreviewVisible, value);
     }
 
-    private bool _sortAscending = true;
+    private bool _allExpanded = true;
+    public bool AllExpanded
+    {
+        get => _allExpanded;
+        set => this.RaiseAndSetIfChanged(ref _allExpanded, value);
+    }
+
+    private bool _sortAscending = false;
     public bool SortAscending
     {
         get => _sortAscending;
@@ -291,7 +298,10 @@ public class MainWindowViewModel : ViewModelBase
 
             await BuildGroupedResultsAsync(allResults, fileCount);
             if (NameSearchScope == true) // Folder only
+            {
                 SetAllGroupsExpanded(false);
+                AllExpanded = false;
+            }
             StatusText = $"Done. {allResults.Count} results in {GroupedResults.Count} folders ({fileCount} files scanned)";
         }
         catch (OperationCanceledException)

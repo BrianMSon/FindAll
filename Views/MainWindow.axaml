@@ -198,8 +198,7 @@
 
             <!-- Expand/Collapse buttons (fixed right) -->
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Margin="4,0,0,0">
-                <Button Content="Expand All"
-                        Click="OnExpandAllClick"
+                <Button Click="OnExpandCollapseToggleClick"
                         Height="28" FontSize="11"
                         Padding="8,2"
                         Margin="0,0,4,0"
@@ -207,17 +206,9 @@
                         VerticalContentAlignment="Center"
                         IsTabStop="False"
                         Focusable="False"
-                        ToolTip.Tip="Expand all directory groups"/>
-                <Button Content="Collapse All"
-                        Click="OnCollapseAllClick"
-                        Height="28" FontSize="11"
-                        Padding="8,2"
-                        Margin="0,0,8,0"
-                        HorizontalContentAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        IsTabStop="False"
-                        Focusable="False"
-                        ToolTip.Tip="Collapse all directory groups"/>
+                        ToolTip.Tip="Toggle expand / collapse all groups">
+                    <TextBlock Text="{Binding AllExpanded, Converter={x:Static conv:BoolToTextConverter.ExpandCollapse}}"/>
+                </Button>
                 <Button Click="OnSortToggleClick"
                         IsEnabled="{Binding !IsSearching}"
                         Height="28" FontSize="11"
@@ -229,8 +220,8 @@
                         ToolTip.Tip="Toggle sort (ascending / descending)">
                     <TextBlock Text="{Binding SortAscending, Converter={x:Static conv:BoolToTextConverter.SortDirection}}"/>
                 </Button>
-                <Button Content="Copy All"
-                        Click="OnCopyAllClick"
+                <Button Content="Copy"
+                        Click="OnCopyVisibleClick"
                         Height="28" FontSize="11"
                         Padding="8,2"
                         Margin="8,0,0,0"
@@ -238,7 +229,17 @@
                         VerticalContentAlignment="Center"
                         IsTabStop="False"
                         Focusable="False"
-                        ToolTip.Tip="Copy all results to clipboard"/>
+                        ToolTip.Tip="Copy visible items to clipboard (collapsed groups show folder only)"/>
+                <Button Content="Copy All"
+                        Click="OnCopyAllClick"
+                        Height="28" FontSize="11"
+                        Padding="8,2"
+                        Margin="4,0,0,0"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False"
+                        Focusable="False"
+                        ToolTip.Tip="Copy all results to clipboard (including collapsed items)"/>
             </StackPanel>
 
             <!-- StatusText fills remaining space -->
