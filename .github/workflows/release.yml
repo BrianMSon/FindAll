@@ -22,13 +22,17 @@ jobs:
       - name: Restore
         run: dotnet restore
 
+      - name: Extract version
+        id: version
+        run: echo "VERSION=$('${{ github.ref_name }}'.TrimStart('v'))" >> $env:GITHUB_OUTPUT
+
       - name: Publish (single file)
         run: >
           dotnet publish -c Release -r win-x64
           --self-contained
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:Version=${{ github.ref_name }}
+          -p:Version=${{ steps.version.outputs.VERSION }}
           -o publish
 
       - name: Zip
