@@ -29,12 +29,12 @@
             <Setter Property="MinWidth" Value="12"/>
         </Style>
         <Style Selector="ListBox[Name=ResultsList] ScrollBar[Orientation=Vertical] /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="#A0A0A0"/>
+            <Setter Property="Background" Value="#8FABC4"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Margin" Value="2"/>
         </Style>
         <Style Selector="ListBox[Name=ResultsList] ScrollBar[Orientation=Vertical]:pointerover /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="#808080"/>
+            <Setter Property="Background" Value="#5B87A8"/>
         </Style>
         <!-- Horizontal scrollbar -->
         <Style Selector="ListBox[Name=ResultsList] ScrollBar[Orientation=Horizontal]">
@@ -50,12 +50,12 @@
             <Setter Property="MinHeight" Value="12"/>
         </Style>
         <Style Selector="ListBox[Name=ResultsList] ScrollBar[Orientation=Horizontal] /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="#A0A0A0"/>
+            <Setter Property="Background" Value="#8FABC4"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Margin" Value="2"/>
         </Style>
         <Style Selector="ListBox[Name=ResultsList] ScrollBar[Orientation=Horizontal]:pointerover /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="#808080"/>
+            <Setter Property="Background" Value="#5B87A8"/>
         </Style>
         <!-- Compact ListBoxItem: remove default padding and min height -->
         <Style Selector="ListBox[Name=ResultsList] ListBoxItem">
@@ -69,8 +69,11 @@
         <Style Selector="ListBox[Name=ResultsList] ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
+        <Style Selector="ListBox[Name=ResultsList] ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#3B82F6"/>
+        </Style>
         <Style Selector="ListBox[Name=ResultsList] ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+            <Setter Property="Background" Value="#3B82F6"/>
         </Style>
     </Window.Styles>
 
@@ -86,6 +89,8 @@
             <TextBlock Text="Folder:"
                        VerticalAlignment="Center"
                        Width="55"
+                       Foreground="#1E3A5F"
+                       FontWeight="Bold"
                        DockPanel.Dock="Left"/>
             <Button Content="Browse"
                     DockPanel.Dock="Right"
@@ -102,7 +107,9 @@
         <!-- Row 1: Include / Exclude / FileName -->
         <Grid Grid.Row="1" Margin="8,4,8,4" ColumnDefinitions="55,150,12,62,150,12,72,*,Auto">
             <TextBlock Grid.Column="0" Text="Filter:"
-                       VerticalAlignment="Center"/>
+                       VerticalAlignment="Center"
+                       Foreground="#1E3A5F"
+                       FontWeight="Bold"/>
             <TextBox Grid.Column="1"
                      Text="{Binding FilePattern}"
                      Watermark="*.cs, *.txt"
@@ -110,6 +117,8 @@
 
             <TextBlock Grid.Column="3" Text="Exclude:"
                        VerticalAlignment="Center"
+                       Foreground="#1E3A5F"
+                       FontWeight="Bold"
                        ToolTip.Tip="Exclude patterns (comma-separated)&#x0a;Examples:&#x0a;  *.dll, *.exe       - Binary files&#x0a;  bin/, obj/         - Build output folders&#x0a;  node_modules/      - Node.js packages&#x0a;  *.min.js, *.map    - Minified JS and maps"/>
             <TextBox Grid.Column="4"
                      Text="{Binding ExcludePattern}"
@@ -118,6 +127,8 @@
 
             <TextBlock Grid.Column="6" Text="Filename:"
                        VerticalAlignment="Center"
+                       Foreground="#1E3A5F"
+                       FontWeight="Bold"
                        ToolTip.Tip="Search file names (substring or regex)"/>
             <TextBox Grid.Column="7"
                      Text="{Binding FileNameSearch}"
@@ -140,6 +151,8 @@
             <TextBlock Text="Text:"
                        VerticalAlignment="Center"
                        Width="55"
+                       Foreground="#1E3A5F"
+                       FontWeight="Bold"
                        DockPanel.Dock="Left"/>
             <ToggleButton IsChecked="{Binding CaseSensitive}"
                           Content="Aa"
@@ -167,7 +180,8 @@
         </DockPanel>
 
         <!-- Row 3: Action Bar with Expand/Collapse -->
-        <DockPanel Grid.Row="3" Margin="8,4,8,4">
+        <Border Grid.Row="3" Background="#D6E4F0" CornerRadius="4" Margin="6,4,6,4" Padding="4,2">
+        <DockPanel>
             <Button Content="Search(F5)"
                     Command="{Binding SearchCommand}"
                     DockPanel.Dock="Left"
@@ -252,16 +266,18 @@
                        Margin="8,0,8,0"
                        TextTrimming="CharacterEllipsis"/>
         </DockPanel>
+        </Border>
 
         <!-- Row 4: Flat Results List (replaces TreeView for accurate scrollbar) -->
-        <Border Grid.Row="4" BorderBrush="#94A3B8" BorderThickness="0,1,0,0" Margin="0">
+        <Border Grid.Row="4" BorderBrush="#7B9ABF" BorderThickness="0,2,0,0" Margin="0">
             <ListBox Name="ResultsList"
                      ItemsSource="{Binding FlatDisplayItems}"
                      SelectedItem="{Binding SelectedItem}"
                      SelectionMode="Single"
                      Focusable="True"
                      AutoScrollToSelectedItem="True"
-                     BorderThickness="0">
+                     BorderThickness="0"
+                     Background="#F0F4F8">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
                         <VirtualizingStackPanel/>
@@ -270,7 +286,7 @@
                 <ListBox.DataTemplates>
                     <!-- Directory group row -->
                     <DataTemplate DataType="vm:DirectoryGroup">
-                        <Border Height="24">
+                        <Border Height="24" Background="#CDDCEB" CornerRadius="2">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="2,0">
                                 <TextBlock Text="{Binding DisplayIndex}"
                                            Width="60" TextAlignment="Left"
@@ -287,6 +303,7 @@
                                 </Panel>
                                 <TextBlock Text="{Binding Directory}"
                                            FontWeight="SemiBold"
+                                           Foreground="#1E3A5F"
                                            VerticalAlignment="Center"/>
                                 <TextBlock Text=" ("
                                            Foreground="#64748B"
@@ -312,8 +329,9 @@
 										   VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding FileName}"
+                                           Foreground="#1A161B"
                                            ToolTip.Tip="{Binding FullPath}"
-										   Margin="15,0,0,0"/>
+                                           Margin="15,0,0,0"/>
                                 <TextBlock Grid.Column="2"
                                            Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
                                            Foreground="#64748B"
@@ -344,7 +362,7 @@
         <GridSplitter Grid.Row="5"
                       ResizeDirection="Rows"
                       Height="5"
-                      Background="#CBD5E1"
+                      Background="#7B9ABF"
                       HorizontalAlignment="Stretch"
                       Focusable="False"
                       IsTabStop="False"/>
@@ -353,14 +371,15 @@
         <Border Grid.Row="6"
                 MinHeight="100"
                 MaxHeight="300"
-                BorderBrush="#94A3B8"
+                BorderBrush="#7B9ABF"
                 BorderThickness="0,1,0,0"
+                Background="#F5F8FC"
                 Padding="0">
             <DockPanel>
-                <Border DockPanel.Dock="Top" Background="#EFF6FF" Padding="0">
+                <Border DockPanel.Dock="Top" Background="#C4D7ED" Padding="0">
                     <TextBlock Text="Preview"
-                               FontWeight="SemiBold"
-                               Foreground="#1D4ED8"
+                               FontWeight="Bold"
+                               Foreground="#1A3A6B"
                                Margin="8,4"/>
                 </Border>
                 <ScrollViewer HorizontalScrollBarVisibility="Auto"
