@@ -6,6 +6,8 @@ public class SearchOptions
     public string FilePattern { get; set; } = "*.*";
     public string ExcludePattern { get; set; } = string.Empty;
     public string? FileNameSearch { get; set; }
+    public bool SearchFileNames { get; set; } = true;
+    public bool SearchFolderNames { get; set; }
     public string? TextSearch { get; set; }
     public bool UseRegex { get; set; }
     public bool CaseSensitive { get; set; }

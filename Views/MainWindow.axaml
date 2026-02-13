@@ -99,7 +99,7 @@
         </DockPanel>
 
         <!-- Row 1: Include / Exclude / FileName -->
-        <Grid Grid.Row="1" Margin="8,4,8,4" ColumnDefinitions="55,150,12,62,150,12,72,*">
+        <Grid Grid.Row="1" Margin="8,4,8,4" ColumnDefinitions="55,150,12,62,150,12,72,*,Auto">
             <TextBlock Grid.Column="0" Text="Filter:"
                        VerticalAlignment="Center"/>
             <TextBox Grid.Column="1"
@@ -121,6 +121,17 @@
             <TextBox Grid.Column="7"
                      Text="{Binding FileNameSearch}"
                      Watermark="Search file names..."/>
+            <CheckBox Grid.Column="8"
+                      IsChecked="{Binding NameSearchScope}"
+                      IsThreeState="True"
+                      VerticalAlignment="Center"
+                      Margin="6,0,0,0"
+                      FontSize="12"
+                      IsTabStop="False"
+                      Padding="2,0"
+                      ToolTip.Tip="Click to cycle search scope:&#x0a;☐ File name only&#x0a;☑ Folder path only&#x0a;▣ File + Folder">
+                <TextBlock Text="{Binding NameSearchScope, Converter={x:Static conv:NullableBoolToTextConverter.NameSearchScope}}"/>
+            </CheckBox>
         </Grid>
 
         <!-- Row 2: Text Search -->

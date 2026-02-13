@@ -208,22 +208,28 @@ public class FileSearchService : IFileSearchService
         {
             var fileInfo = new FileInfo(filePath);
 
-            // File name search filter
+            // File name / folder name search filter
             if (isFileNameSearch)
             {
-                bool fileNameMatch;
-                if (fileNameRegex != null)
+                var cmp = options.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+                bool match = false;
+
+                if (options.SearchFileNames)
                 {
-                    fileNameMatch = fileNameRegex.IsMatch(fileInfo.Name);
+                    match = fileNameRegex != null
+                        ? fileNameRegex.IsMatch(fileInfo.Name)
+                        : fileInfo.Name.Contains(options.FileNameSearch!, cmp);
                 }
-                else
+
+                if (!match && options.SearchFolderNames)
                 {
-                    var comparison = options.CaseSensitive
-                        ? StringComparison.Ordinal
-                        : StringComparison.OrdinalIgnoreCase;
-                    fileNameMatch = fileInfo.Name.Contains(options.FileNameSearch!, comparison);
+                    var dirName = fileInfo.DirectoryName ?? string.Empty;
+                    match = fileNameRegex != null
+                        ? fileNameRegex.IsMatch(dirName)
+                        : dirName.Contains(options.FileNameSearch!, cmp);
                 }
-                if (!fileNameMatch) return results;
+
+                if (!match) return results;
             }
 
             if (!isTextSearch)

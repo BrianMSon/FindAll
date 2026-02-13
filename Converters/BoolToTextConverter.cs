@@ -26,3 +26,29 @@ public class BoolToTextConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+public class NullableBoolToTextConverter : IValueConverter
+{
+    public static readonly NullableBoolToTextConverter NameSearchScope = new()
+    {
+        FalseText = "File",
+        NullText = "File+Folder",
+        TrueText = "Folder"
+    };
+
+    public string TrueText { get; set; } = "True";
+    public string FalseText { get; set; } = "False";
+    public string NullText { get; set; } = "Null";
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool b)
+            return b ? TrueText : FalseText;
+        return NullText;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

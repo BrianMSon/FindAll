@@ -42,6 +42,13 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _fileNameSearch, value);
     }
 
+    private bool? _nameSearchScope = false; // false=File, null=File+Folder, true=Folder
+    public bool? NameSearchScope
+    {
+        get => _nameSearchScope;
+        set => this.RaiseAndSetIfChanged(ref _nameSearchScope, value);
+    }
+
     private string _textSearch = string.Empty;
     public string TextSearch
     {
@@ -197,6 +204,8 @@ public class MainWindowViewModel : ViewModelBase
             FilePattern = string.IsNullOrWhiteSpace(FilePattern) ? "*.*" : FilePattern,
             ExcludePattern = ExcludePattern ?? string.Empty,
             FileNameSearch = string.IsNullOrWhiteSpace(FileNameSearch) ? null : FileNameSearch,
+            SearchFileNames = NameSearchScope != true,   // false or null
+            SearchFolderNames = NameSearchScope != false, // true or null
             TextSearch = string.IsNullOrWhiteSpace(TextSearch) ? null : TextSearch,
             UseRegex = UseRegex,
             CaseSensitive = CaseSensitive
@@ -274,6 +283,8 @@ public class MainWindowViewModel : ViewModelBase
             await searchTask;
 
             await BuildGroupedResultsAsync(allResults, fileCount);
+            if (NameSearchScope == true) // Folder only
+                SetAllGroupsExpanded(false);
             StatusText = $"Done. {allResults.Count} results in {GroupedResults.Count} folders ({fileCount} files scanned)";
         }
         catch (OperationCanceledException)
