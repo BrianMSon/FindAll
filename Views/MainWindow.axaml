@@ -104,14 +104,16 @@
                        VerticalAlignment="Center"/>
             <TextBox Grid.Column="1"
                      Text="{Binding FilePattern}"
-                     Watermark="*.cs, *.txt"/>
+                     Watermark="*.cs, *.txt"
+                     ToolTip.Tip="Include file patterns (comma-separated)&#x0a;Examples:&#x0a;  *.cs, *.txt    - C# and text files&#x0a;  *.xml, *.json  - XML and JSON files&#x0a;  *.cs, *.xaml   - C# and XAML files&#x0a;  *.*            - All files (default)"/>
 
             <TextBlock Grid.Column="3" Text="Exclude:"
                        VerticalAlignment="Center"
-                       ToolTip.Tip="Exclude patterns (e.g. *.dll, bin/, obj/, node_modules)"/>
+                       ToolTip.Tip="Exclude patterns (comma-separated)&#x0a;Examples:&#x0a;  *.dll, *.exe       - Binary files&#x0a;  bin/, obj/         - Build output folders&#x0a;  node_modules/      - Node.js packages&#x0a;  *.min.js, *.map    - Minified JS and maps"/>
             <TextBox Grid.Column="4"
                      Text="{Binding ExcludePattern}"
-                     Watermark="*.dll, bin/, obj/"/>
+                     Watermark="*.dll, bin/, obj/"
+                     ToolTip.Tip="Exclude patterns (comma-separated)&#x0a;Examples:&#x0a;  *.dll, *.exe       - Binary files&#x0a;  bin/, obj/         - Build output folders&#x0a;  node_modules/      - Node.js packages&#x0a;  *.min.js, *.map    - Minified JS and maps"/>
 
             <TextBlock Grid.Column="6" Text="Filename:"
                        VerticalAlignment="Center"
