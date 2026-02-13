@@ -210,6 +210,8 @@ public class MainWindowViewModel : ViewModelBase
         _cts = new CancellationTokenSource();
         IsSearching = true;
         IsPaused = false;
+        AllExpanded = true;
+        SortAscending = false;
         StatusText = "Searching...";
 
         // Normalize drive letter path (e.g. "C:" -> "C:\")

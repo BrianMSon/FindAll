@@ -74,7 +74,7 @@
     </Window.Styles>
 
     <Window.KeyBindings>
-        <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}"/>
+        <KeyBinding Gesture="F5" Command="{Binding SearchCommand}"/>
         <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}"/>
     </Window.KeyBindings>
 
@@ -167,18 +167,18 @@
 
         <!-- Row 3: Action Bar with Expand/Collapse -->
         <DockPanel Grid.Row="3" Margin="8,4,8,4">
-            <Button Content="Search"
+            <Button Content="Search(F5)"
                     Command="{Binding SearchCommand}"
                     DockPanel.Dock="Left"
-                    Width="80"
+                    Width="100"
                     Margin="0,0,4,0"
                     HorizontalContentAlignment="Center"
                     VerticalContentAlignment="Center"
                     Classes="accent"/>
-            <Button Content="Cancel"
+            <Button Content="Cancel(ESC)"
                     Command="{Binding CancelCommand}"
                     DockPanel.Dock="Left"
-                    Width="80"
+                    Width="100"
                     HorizontalContentAlignment="Center"
                     VerticalContentAlignment="Center"/>
             <Button DockPanel.Dock="Left"
@@ -311,7 +311,8 @@
 										   VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding FileName}"
-                                           ToolTip.Tip="{Binding FullPath}"/>
+                                           ToolTip.Tip="{Binding FullPath}"
+										   Margin="15,0,0,0"/>
                                 <TextBlock Grid.Column="2"
                                            Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
                                            Foreground="#64748B"
