@@ -272,8 +272,8 @@
                         <Border Height="24">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="2,0">
                                 <TextBlock Text="{Binding DisplayIndex}"
-                                           Width="40" TextAlignment="Left"
-                                           Foreground="#94A3B8" FontSize="11"
+                                           Width="60" TextAlignment="Left"
+                                           Foreground="#94A3B8" FontSize="10"
                                            Margin="0,0,6,0"
                                            VerticalAlignment="Center"/>
                                 <Panel Width="16">
@@ -302,12 +302,13 @@
                     <!-- Individual result row -->
                     <DataTemplate DataType="models:SearchResult">
                         <Border Height="24">
-                            <Grid ColumnDefinitions="40,Auto,80,130,60,*" VerticalAlignment="Center" Margin="20,0,2,0">
+                            <Grid ColumnDefinitions="50,Auto,80,130,60,*" VerticalAlignment="Center" Margin="20,0,2,0">
                                 <TextBlock Grid.Column="0"
                                            Text="{Binding DisplayIndex}"
-                                           TextAlignment="Left"
-                                           Foreground="#94A3B8" FontSize="11"
-                                           Margin="0,0,6,0"/>
+                                           TextAlignment="Right"
+                                           Foreground="#94A3B8" FontSize="10"
+                                           Margin="0,0,6,0"
+										   VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding FileName}"
                                            ToolTip.Tip="{Binding FullPath}"/>
