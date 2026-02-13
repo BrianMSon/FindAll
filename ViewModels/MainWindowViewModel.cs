@@ -123,6 +123,13 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isPreviewVisible, value);
     }
 
+    private bool _sortAscending = true;
+    public bool SortAscending
+    {
+        get => _sortAscending;
+        set => this.RaiseAndSetIfChanged(ref _sortAscending, value);
+    }
+
     private bool _isTextSearch;
     public bool IsTextSearch
     {

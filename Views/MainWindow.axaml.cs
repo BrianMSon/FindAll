@@ -319,8 +319,28 @@ public partial class MainWindow : Window
 
     private void OnExpandAllClick(object? sender, RoutedEventArgs e) => _viewModel?.SetAllGroupsExpanded(true);
     private void OnCollapseAllClick(object? sender, RoutedEventArgs e) => _viewModel?.SetAllGroupsExpanded(false);
-    private void OnSortAscendingClick(object? sender, RoutedEventArgs e) => _viewModel?.SortResults(true);
-    private void OnSortDescendingClick(object? sender, RoutedEventArgs e) => _viewModel?.SortResults(false);
+    private void OnSortToggleClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null) return;
+        _viewModel.SortResults(_viewModel.SortAscending);
+        _viewModel.SortAscending = !_viewModel.SortAscending;
+
+        var list = this.FindControl<ListBox>("ResultsList");
+        if (list != null)
+        {
+            var idx = list.SelectedIndex;
+            if (idx >= 0)
+            {
+                var c = list.ContainerFromIndex(idx);
+                if (c is ListBoxItem item)
+                    item.Focus();
+                else
+                    list.Focus();
+            }
+            else
+                list.Focus();
+        }
+    }
 
     private async void OnCopyAllClick(object? sender, RoutedEventArgs e)
     {

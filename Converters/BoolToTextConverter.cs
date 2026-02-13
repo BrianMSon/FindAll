@@ -11,6 +11,12 @@ public class BoolToTextConverter : IValueConverter
         FalseText = "Pause"
     };
 
+    public static readonly BoolToTextConverter SortDirection = new()
+    {
+        TrueText = "Sort ▲",
+        FalseText = "Sort ▼"
+    };
+
     public string TrueText { get; set; } = "True";
     public string FalseText { get; set; } = "False";
 
