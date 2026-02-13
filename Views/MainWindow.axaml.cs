@@ -313,10 +313,6 @@ public partial class MainWindow : Window
         openExplorer.Click += (_, _) => OpenFileInExplorer(result.FullPath);
         menu.Items.Add(openExplorer);
 
-        var openFolder = new MenuItem { Header = "Open Folder" };
-        openFolder.Click += (_, _) => OpenFolderInExplorer(result.Directory);
-        menu.Items.Add(openFolder);
-
         menu.Items.Add(new Separator());
 
         var parentGroup = _viewModel?.GroupedResults.FirstOrDefault(g => g.Items.Contains(result));
