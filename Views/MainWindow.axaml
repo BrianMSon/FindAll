@@ -399,13 +399,13 @@
                 MaxHeight="300"
                 BorderBrush="#7B9ABF"
                 BorderThickness="0,1,0,0"
-                Background="#F5F8FC"
+                Background="#F8F6F2"
                 Padding="0">
             <DockPanel>
-                <Border DockPanel.Dock="Top" Background="#C4D7ED" Padding="0">
+                <Border DockPanel.Dock="Top" Background="#DDD5CA" Padding="0">
                     <TextBlock Text="Preview"
                                FontWeight="Bold"
-                               Foreground="#1A3A6B"
+                               Foreground="#4A3D30"
                                Margin="8,4"/>
                 </Border>
                 <ScrollViewer HorizontalScrollBarVisibility="Auto"
