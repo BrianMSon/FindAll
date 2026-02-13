@@ -85,13 +85,13 @@ public partial class MainWindow : Window
             {
                 case Key.PageDown:
                 {
-                    int pageSize = Math.Max(1, (int)(list.Bounds.Height / 18));
+                    int pageSize = Math.Max(1, (int)(list.Bounds.Height / 24));
                     targetIndex = currentIndex < 0 ? 0 : Math.Min(lastIndex, currentIndex + pageSize);
                     break;
                 }
                 case Key.PageUp:
                 {
-                    int pageSize = Math.Max(1, (int)(list.Bounds.Height / 18));
+                    int pageSize = Math.Max(1, (int)(list.Bounds.Height / 24));
                     targetIndex = currentIndex <= 0 ? 0 : Math.Max(0, currentIndex - pageSize);
                     break;
                 }
@@ -101,6 +101,48 @@ public partial class MainWindow : Window
                 case Key.End:
                     targetIndex = lastIndex;
                     break;
+                case Key.Left:
+                case Key.Right:
+                {
+                    if (currentIndex >= 0 && currentIndex < items.Count)
+                    {
+                        var selectedItem = items[currentIndex];
+                        if (selectedItem is DirectoryGroup group)
+                        {
+                            bool expand = e.Key == Key.Right;
+                            if (group.IsExpanded != expand)
+                                _viewModel.ToggleGroup(group);
+                        }
+                        else if (e.Key == Key.Left && selectedItem is SearchResult sr)
+                        {
+                            // Left on a file item: select parent group
+                            var parentGroup = _viewModel.GroupedResults.FirstOrDefault(g => g.Items.Contains(sr));
+                            if (parentGroup != null)
+                            {
+                                int groupIndex = _viewModel.FlatDisplayItems.IndexOf(parentGroup);
+                                if (groupIndex >= 0)
+                                {
+                                    list.SelectedIndex = groupIndex;
+                                    list.ScrollIntoView(parentGroup);
+                                }
+                            }
+                        }
+                    }
+                    // Restore focus
+                    var idx = list.SelectedIndex;
+                    if (idx >= 0)
+                    {
+                        var c = list.ContainerFromIndex(idx);
+                        if (c is ListBoxItem item)
+                            item.Focus();
+                        else
+                            list.Focus();
+                    }
+                    else
+                        list.Focus();
+                    e.Handled = true;
+                    return;
+                }
                 default:
                     return;
             }
