@@ -204,12 +204,29 @@
                     VerticalContentAlignment="Center">
                 <TextBlock Text="{Binding IsPaused, Converter={x:Static conv:BoolToTextConverter.PauseResume}}"/>
             </Button>
-            <ProgressBar IsIndeterminate="{Binding !IsPaused}"
-                         IsVisible="{Binding IsSearching}"
-                         DockPanel.Dock="Left"
-                         Width="120"
-                         Height="16"
-                         Margin="8,0,0,0"/>
+
+			<Panel DockPanel.Dock="Left"
+                   Width="100" Height="16"
+                   Margin="58,0,0,0"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding IsSearching}">
+
+				<ProgressBar IsIndeterminate="{Binding !IsPaused}"
+							 IsVisible="{Binding !IsPaused}"
+							 Foreground="#3B82F6"
+							 Background="#D2D8D0"
+							 CornerRadius="2"
+							 Width="100" Height="16"/>
+
+				<Grid IsVisible="{Binding IsPaused}" Width="100" Height="16">
+					<Border Background="#D2D8D0" Width="200" CornerRadius="2" />
+
+					<Border Background="#3B82F6"
+							Width="80"
+							CornerRadius="2"
+							HorizontalAlignment="Center" />
+				</Grid>
+			</Panel>
 
             <!-- Expand/Collapse buttons (fixed right) -->
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Margin="4,0,0,0">
