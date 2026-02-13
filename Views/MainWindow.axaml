@@ -82,7 +82,7 @@
         <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}"/>
     </Window.KeyBindings>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,150">
 
         <!-- Background for top area (rows 0-3) -->
         <Border Grid.Row="0" Grid.RowSpan="4" Background="#F4F5F3"/>
@@ -395,8 +395,6 @@
 
         <!-- Row 6: Preview Panel -->
         <Border Grid.Row="6"
-                MinHeight="100"
-                MaxHeight="300"
                 BorderBrush="#7B9ABF"
                 BorderThickness="0,1,0,0"
                 Background="#F8F6F2"

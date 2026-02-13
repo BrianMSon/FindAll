@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reactive;
@@ -21,7 +21,7 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _searchPath, value);
     }
 
-    private string _filePattern = "*.*";
+    private string _filePattern = "";
     public string FilePattern
     {
         get => _filePattern;
