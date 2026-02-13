@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using FindAll.Models;
@@ -103,7 +103,8 @@ public class FileSearchService : IFileSearchService
                 if (currentLine > endLine) break;
 
                 string prefix = currentLine == lineNumber ? ">>> " : "    ";
-                lines.Add($"{prefix}{currentLine,6}: {line}");
+                var displayLine = line.Length > 500 ? line.Substring(0, 500) + "..." : line;
+                lines.Add($"{prefix}{currentLine,6}: {displayLine}");
             }
         }
         catch { }
@@ -271,7 +272,7 @@ public class FileSearchService : IFileSearchService
                             FileSize = fileInfo.Length,
                             ModifiedDate = fileInfo.LastWriteTime,
                             LineNumber = lineNum,
-                            MatchingLine = line.TrimStart(),
+                            MatchingLine = line.TrimStart() is var trimmed1 && trimmed1.Length > 500 ? trimmed1.Substring(0, 200) + "..." : trimmed1,
                             MatchStartIndex = match.Index,
                             MatchLength = match.Length
                         });
@@ -290,7 +291,7 @@ public class FileSearchService : IFileSearchService
                             FileSize = fileInfo.Length,
                             ModifiedDate = fileInfo.LastWriteTime,
                             LineNumber = lineNum,
-                            MatchingLine = line.TrimStart(),
+                            MatchingLine = line.TrimStart() is var trimmed2 && trimmed2.Length > 500 ? trimmed2.Substring(0, 200) + "..." : trimmed2,
                             MatchStartIndex = idx,
                             MatchLength = options.TextSearch!.Length
                         });

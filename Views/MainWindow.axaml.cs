@@ -136,6 +136,12 @@ public partial class MainWindow : Window
                     }
                     break;
                 }
+                case Key.Down:
+                    targetIndex = currentIndex < lastIndex ? currentIndex + 1 : lastIndex;
+                    break;
+                case Key.Up:
+                    targetIndex = currentIndex > 0 ? currentIndex - 1 : 0;
+                    break;
                 case Key.Left:
                 case Key.Right:
                 {

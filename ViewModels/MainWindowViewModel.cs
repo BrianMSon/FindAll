@@ -13,6 +13,8 @@ public class MainWindowViewModel : ViewModelBase
 {
     private readonly IFileSearchService _searchService;
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _previewCts;
+    private Dictionary<string, DirectoryGroup> _groupLookup = new();
 
     private string _searchPath = Environment.CurrentDirectory;
     public string SearchPath
@@ -68,6 +70,13 @@ public class MainWindowViewModel : ViewModelBase
     {
         get => _caseSensitive;
         set => this.RaiseAndSetIfChanged(ref _caseSensitive, value);
+    }
+
+    private decimal _maxFileSizeMB = 50;
+    public decimal MaxFileSizeMB
+    {
+        get => _maxFileSizeMB;
+        set => this.RaiseAndSetIfChanged(ref _maxFileSizeMB, Math.Max(1, value));
     }
 
     private bool _isSearching;
@@ -187,17 +196,9 @@ public class MainWindowViewModel : ViewModelBase
 
         this.WhenAnyValue(x => x.SelectedResult)
             .Where(r => r != null)
-            .Subscribe(r =>
-            {
-                try
-                {
-                    LoadPreview(r!);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error in LoadPreview subscription: {ex.Message}");
-                }
-            });
+            .Throttle(TimeSpan.FromMilliseconds(300))
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(r => _ = LoadPreviewAsync(r!));
     }
 
     private async Task ExecuteSearchAsync()
@@ -229,7 +230,8 @@ public class MainWindowViewModel : ViewModelBase
             SearchFolderNames = NameSearchScope != false, // true or null
             TextSearch = string.IsNullOrWhiteSpace(TextSearch) ? null : TextSearch,
             UseRegex = UseRegex,
-            CaseSensitive = CaseSensitive
+            CaseSensitive = CaseSensitive,
+            MaxFileSizeBytes = (long)MaxFileSizeMB * 1024 * 1024
         };
 
         if (options.UseRegex)
@@ -249,11 +251,11 @@ public class MainWindowViewModel : ViewModelBase
             }
         }
 
-        var allResults = new ConcurrentBag<SearchResult>();
+        _groupLookup.Clear();
+        var resultQueue = new ConcurrentQueue<SearchResult>();
         int fileCount = 0;
         int resultCount = 0;
 
-        // Use lightweight counter instead of Progress<T> to avoid flooding UI thread
         var progress = new Progress<int>(count =>
         {
             Volatile.Write(ref fileCount, count);
@@ -263,17 +265,15 @@ public class MainWindowViewModel : ViewModelBase
         {
             await foreach (var result in _searchService.SearchAsync(options, progress, _cts.Token))
             {
-                allResults.Add(result);
+                resultQueue.Enqueue(result);
                 Interlocked.Increment(ref resultCount);
             }
         }, _cts.Token);
 
         try
         {
-            // Periodically refresh results and status during search
             while (!searchTask.IsCompleted)
             {
-                // Wait up to 2 seconds, checking completion every 100ms
                 for (int i = 0; i < 20; i++)
                 {
                     if (searchTask.IsCompleted) break;
@@ -291,30 +291,29 @@ public class MainWindowViewModel : ViewModelBase
                     catch (OperationCanceledException) { break; }
                 }
 
-                // Update status text once per cycle (every ~2s) instead of per-file
                 var fc = Volatile.Read(ref fileCount);
                 var rc = Volatile.Read(ref resultCount);
                 if (!IsPaused)
                 {
                     StatusText = $"Searching... {fc} files scanned, {rc} matches";
-                    await BuildGroupedResultsAsync(allResults, fc);
+                    DrainNewResults(resultQueue);
                 }
             }
 
             await searchTask;
 
-            await BuildGroupedResultsAsync(allResults, fileCount);
+            DrainNewResults(resultQueue);
             if (NameSearchScope == true) // Folder only
             {
                 SetAllGroupsExpanded(false);
                 AllExpanded = false;
             }
-            StatusText = $"Done. {allResults.Count} results in {GroupedResults.Count} folders ({fileCount} files scanned)";
+            StatusText = $"Done. {resultCount} results in {GroupedResults.Count} folders ({fileCount} files scanned)";
         }
         catch (OperationCanceledException)
         {
-            await BuildGroupedResultsAsync(allResults, fileCount);
-            StatusText = $"Cancelled. {allResults.Count} results ({fileCount} files scanned)";
+            DrainNewResults(resultQueue);
+            StatusText = $"Cancelled. {resultCount} results ({fileCount} files scanned)";
         }
         catch (Exception ex)
         {
@@ -329,107 +328,30 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private async Task BuildGroupedResultsAsync(ConcurrentBag<SearchResult> allResults, int fileCount)
+    private void DrainNewResults(ConcurrentQueue<SearchResult> queue)
     {
-        if (allResults.IsEmpty)
+        bool hasNew = false;
+        while (queue.TryDequeue(out var result))
         {
-            StatusText = $"Searching... {fileCount} files scanned, 0 matches";
-            return;
+            hasNew = true;
+            if (!_groupLookup.TryGetValue(result.Directory, out var group))
+            {
+                group = new DirectoryGroup { Directory = result.Directory, IsExpanded = true };
+                _groupLookup[result.Directory] = group;
+                GroupedResults.Add(group);
+            }
+            group.Items.Add(result);
         }
 
-        // Save current selection and current group order
-        var selectedPath = SelectedResult?.FullPath;
-        var selectedDir = (SelectedItem as DirectoryGroup)?.Directory;
-        var currentDirOrder = GroupedResults.Select(g => g.Directory).ToList();
+        if (!hasNew) return;
 
-        // Group results preserving existing order, new dirs appended at end in discovery order
-        var groups = await Task.Run(() =>
-        {
-            // Build groups preserving discovery order using ordered grouping
-            var allArray = allResults.ToArray();
-            var grouped = new Dictionary<string, List<SearchResult>>();
-            var discoveryOrder = new List<string>();
+        RebuildFlatDisplayItems();
 
-            foreach (var r in allArray)
-            {
-                if (!grouped.TryGetValue(r.Directory, out var list))
-                {
-                    list = new List<SearchResult>();
-                    grouped[r.Directory] = list;
-                    discoveryOrder.Add(r.Directory);
-                }
-                list.Add(r);
-            }
+        // Auto-select first item if nothing selected yet
+        if (SelectedItem == null && GroupedResults.Count > 0 && GroupedResults[0].Items.Count > 0)
+            SelectedItem = GroupedResults[0].Items[0];
 
-            var orderedGroups = new List<DirectoryGroup>();
-            var processed = new HashSet<string>();
-
-            // Existing dirs in current order
-            foreach (var dir in currentDirOrder)
-            {
-                if (grouped.TryGetValue(dir, out var items))
-                {
-                    orderedGroups.Add(new DirectoryGroup { Directory = dir, Items = items });
-                    processed.Add(dir);
-                }
-            }
-
-            // New dirs appended at end in discovery order
-            foreach (var dir in discoveryOrder)
-            {
-                if (!processed.Contains(dir))
-                {
-                    orderedGroups.Add(new DirectoryGroup { Directory = dir, Items = grouped[dir] });
-                }
-            }
-
-            return orderedGroups;
-        });
-
-        // Update UI on the UI thread - single assignment triggers one PropertyChanged
-        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            try
-            {
-                GroupedResults = new ObservableCollection<DirectoryGroup>(groups);
-                RebuildFlatDisplayItems();
-
-                StatusText = $"Searching... {fileCount} files scanned, {allResults.Count} matches";
-
-                // Restore selection
-                object? itemToSelect = null;
-
-                if (!string.IsNullOrEmpty(selectedPath))
-                {
-                    foreach (var group in GroupedResults)
-                    {
-                        var match = group.Items.FirstOrDefault(r => r.FullPath == selectedPath);
-                        if (match != null) { itemToSelect = match; break; }
-                    }
-                }
-                else if (!string.IsNullOrEmpty(selectedDir))
-                {
-                    itemToSelect = GroupedResults.FirstOrDefault(g => g.Directory == selectedDir);
-                }
-
-                // Only default to first item when nothing was previously selected
-                if (itemToSelect == null && SelectedItem == null && GroupedResults.Count > 0 && GroupedResults[0].Items.Count > 0)
-                {
-                    itemToSelect = GroupedResults[0].Items[0];
-                }
-
-                if (itemToSelect != null)
-                {
-                    SelectedItem = itemToSelect;
-                }
-
-                ResultsUpdated?.Invoke();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error updating results: {ex.Message}");
-            }
-        });
+        ResultsUpdated?.Invoke();
     }
 
     public void RebuildFlatDisplayItems()
@@ -525,8 +447,12 @@ public class MainWindowViewModel : ViewModelBase
         catch { }
     }
 
-    private void LoadPreview(SearchResult result)
+    private async Task LoadPreviewAsync(SearchResult result)
     {
+        _previewCts?.Cancel();
+        _previewCts = new CancellationTokenSource();
+        var ct = _previewCts.Token;
+
         try
         {
             if (result == null)
@@ -544,7 +470,11 @@ public class MainWindowViewModel : ViewModelBase
 
             if (result.LineNumber.HasValue)
             {
-                var lines = _searchService?.GetContextLines(result.FullPath, result.LineNumber.Value);
+                var lines = await Task.Run(() =>
+                    _searchService?.GetContextLines(result.FullPath, result.LineNumber.Value), ct);
+
+                if (ct.IsCancellationRequested) return;
+
                 if (lines != null && lines.Any())
                 {
                     PreviewText = string.Join(Environment.NewLine, lines);
@@ -562,11 +492,14 @@ public class MainWindowViewModel : ViewModelBase
                 IsPreviewVisible = true;
             }
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            PreviewText = $"Error loading preview: {ex.Message}";
-            IsPreviewVisible = true;
-            System.Diagnostics.Debug.WriteLine($"LoadPreview error: {ex.Message}\n{ex.StackTrace}");
+            if (!ct.IsCancellationRequested)
+            {
+                PreviewText = $"Error loading preview: {ex.Message}";
+                IsPreviewVisible = true;
+            }
         }
     }
 }
