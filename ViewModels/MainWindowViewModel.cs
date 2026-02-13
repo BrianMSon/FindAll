@@ -330,16 +330,29 @@ public class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Save current selection path and current group order
+        // Save current selection and current group order
         var selectedPath = SelectedResult?.FullPath;
+        var selectedDir = (SelectedItem as DirectoryGroup)?.Directory;
         var currentDirOrder = GroupedResults.Select(g => g.Directory).ToList();
 
-        // Group results preserving existing order, new dirs appended at end
+        // Group results preserving existing order, new dirs appended at end in discovery order
         var groups = await Task.Run(() =>
         {
-            var grouped = allResults.ToArray()
-                .GroupBy(r => r.Directory)
-                .ToDictionary(g => g.Key, g => g.ToList());
+            // Build groups preserving discovery order using ordered grouping
+            var allArray = allResults.ToArray();
+            var grouped = new Dictionary<string, List<SearchResult>>();
+            var discoveryOrder = new List<string>();
+
+            foreach (var r in allArray)
+            {
+                if (!grouped.TryGetValue(r.Directory, out var list))
+                {
+                    list = new List<SearchResult>();
+                    grouped[r.Directory] = list;
+                    discoveryOrder.Add(r.Directory);
+                }
+                list.Add(r);
+            }
 
             var orderedGroups = new List<DirectoryGroup>();
             var processed = new HashSet<string>();
@@ -354,10 +367,13 @@ public class MainWindowViewModel : ViewModelBase
                 }
             }
 
-            // New dirs appended at end
-            foreach (var kvp in grouped.Where(g => !processed.Contains(g.Key)))
+            // New dirs appended at end in discovery order
+            foreach (var dir in discoveryOrder)
             {
-                orderedGroups.Add(new DirectoryGroup { Directory = kvp.Key, Items = kvp.Value });
+                if (!processed.Contains(dir))
+                {
+                    orderedGroups.Add(new DirectoryGroup { Directory = dir, Items = grouped[dir] });
+                }
             }
 
             return orderedGroups;
@@ -373,27 +389,31 @@ public class MainWindowViewModel : ViewModelBase
 
                 StatusText = $"Searching... {fileCount} files scanned, {allResults.Count} matches";
 
-                // Restore or set selection
-                SearchResult? matchToSelect = null;
+                // Restore selection
+                object? itemToSelect = null;
 
                 if (!string.IsNullOrEmpty(selectedPath))
                 {
                     foreach (var group in GroupedResults)
                     {
-                        matchToSelect = group.Items.FirstOrDefault(r => r.FullPath == selectedPath);
-                        if (matchToSelect != null)
-                            break;
+                        var match = group.Items.FirstOrDefault(r => r.FullPath == selectedPath);
+                        if (match != null) { itemToSelect = match; break; }
                     }
                 }
-
-                if (matchToSelect == null && GroupedResults.Count > 0 && GroupedResults[0].Items.Count > 0)
+                else if (!string.IsNullOrEmpty(selectedDir))
                 {
-                    matchToSelect = GroupedResults[0].Items[0];
+                    itemToSelect = GroupedResults.FirstOrDefault(g => g.Directory == selectedDir);
                 }
 
-                if (matchToSelect != null)
+                // Only default to first item when nothing was previously selected
+                if (itemToSelect == null && SelectedItem == null && GroupedResults.Count > 0 && GroupedResults[0].Items.Count > 0)
                 {
-                    SelectedItem = matchToSelect;
+                    itemToSelect = GroupedResults[0].Items[0];
+                }
+
+                if (itemToSelect != null)
+                {
+                    SelectedItem = itemToSelect;
                 }
 
                 ResultsUpdated?.Invoke();
