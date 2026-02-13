@@ -358,8 +358,9 @@ public partial class MainWindow : Window
     private void OnSortToggleClick(object? sender, RoutedEventArgs e)
     {
         if (_viewModel == null) return;
-        _viewModel.SortAscending = !_viewModel.SortAscending;
-        _viewModel.SortResults(_viewModel.SortAscending);
+        bool ascending = _viewModel.SortAscending != true; // null or false → true, true → false
+        _viewModel.SortAscending = ascending;
+        _viewModel.SortResults(ascending);
 
         var list = this.FindControl<ListBox>("ResultsList");
         if (list != null)

@@ -11,12 +11,6 @@ public class BoolToTextConverter : IValueConverter
         FalseText = "Pause"
     };
 
-    public static readonly BoolToTextConverter SortDirection = new()
-    {
-        TrueText = "Sort ▲",
-        FalseText = "Sort ▼"
-    };
-
     public static readonly BoolToTextConverter ExpandCollapse = new()
     {
         TrueText = "▼",
@@ -46,6 +40,13 @@ public class NullableBoolToTextConverter : IValueConverter
         FalseText = "File",
         NullText = "File+Folder",
         TrueText = "Folder"
+    };
+
+    public static readonly NullableBoolToTextConverter SortDirection = new()
+    {
+        NullText = "Sort",
+        TrueText = "Sort ▲",
+        FalseText = "Sort ▼"
     };
 
     public string TrueText { get; set; } = "True";

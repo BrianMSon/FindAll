@@ -130,8 +130,8 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _allExpanded, value);
     }
 
-    private bool _sortAscending = false;
-    public bool SortAscending
+    private bool? _sortAscending = null; // null=initial, true=ascending, false=descending
+    public bool? SortAscending
     {
         get => _sortAscending;
         set => this.RaiseAndSetIfChanged(ref _sortAscending, value);
@@ -211,7 +211,7 @@ public class MainWindowViewModel : ViewModelBase
         IsSearching = true;
         IsPaused = false;
         AllExpanded = true;
-        SortAscending = false;
+        SortAscending = null;
         StatusText = "Searching...";
 
         // Normalize drive letter path (e.g. "C:" -> "C:\")

@@ -218,7 +218,7 @@
                         IsTabStop="False"
                         Focusable="False"
                         ToolTip.Tip="Toggle sort (ascending / descending)">
-                    <TextBlock Text="{Binding SortAscending, Converter={x:Static conv:BoolToTextConverter.SortDirection}}"/>
+                    <TextBlock Text="{Binding SortAscending, Converter={x:Static conv:NullableBoolToTextConverter.SortDirection}}"/>
                 </Button>
                 <Button Content="Copy"
                         Click="OnCopyVisibleClick"
