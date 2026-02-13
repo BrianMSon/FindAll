@@ -293,14 +293,20 @@
                                            Foreground="#94A3B8" FontSize="10"
                                            Margin="0,0,6,0"
                                            VerticalAlignment="Center"/>
-                                <Panel Width="16">
-                                    <TextBlock Text="&#x25BC;" FontSize="10"
-                                               VerticalAlignment="Center" HorizontalAlignment="Center"
-                                               IsVisible="{Binding IsExpanded}"/>
-                                    <TextBlock Text="&#x25B6;" FontSize="10"
-                                               VerticalAlignment="Center" HorizontalAlignment="Center"
-                                               IsVisible="{Binding !IsExpanded}"/>
-                                </Panel>
+                                <Button Width="16" Height="16" Padding="0"
+                                        Background="Transparent" BorderThickness="0"
+                                        Click="OnToggleGroupClick"
+                                        Cursor="Hand"
+                                        Focusable="False" IsTabStop="False">
+                                    <Panel>
+                                        <TextBlock Text="&#x25BC;" FontSize="10"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                   IsVisible="{Binding IsExpanded}"/>
+                                        <TextBlock Text="&#x25B6;" FontSize="10"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                   IsVisible="{Binding !IsExpanded}"/>
+                                    </Panel>
+                                </Button>
                                 <TextBlock Text="{Binding Directory}"
                                            FontWeight="SemiBold"
                                            Foreground="#1E3A5F"

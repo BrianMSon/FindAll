@@ -212,7 +212,7 @@ public partial class MainWindow : Window
 
             if (item is DirectoryGroup group)
             {
-                _viewModel?.ToggleGroup(group);
+                OpenFolderInExplorer(group.Directory);
             }
             else if (item is SearchResult result && !string.IsNullOrEmpty(result.FullPath))
             {
@@ -367,6 +367,30 @@ public partial class MainWindow : Window
     }
 
     // --- Expand All / Collapse All buttons ---
+
+    private void OnToggleGroupClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is DirectoryGroup group)
+        {
+            _viewModel?.ToggleGroup(group);
+
+            var list = this.FindControl<ListBox>("ResultsList");
+            if (list != null)
+            {
+                var idx = list.SelectedIndex;
+                if (idx >= 0)
+                {
+                    var c = list.ContainerFromIndex(idx);
+                    if (c is ListBoxItem item)
+                        item.Focus();
+                    else
+                        list.Focus();
+                }
+                else
+                    list.Focus();
+            }
+        }
+    }
 
     private void OnExpandCollapseToggleClick(object? sender, RoutedEventArgs e)
     {
