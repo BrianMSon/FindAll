@@ -218,6 +218,16 @@
                         IsTabStop="False"
                         Focusable="False"
                         ToolTip.Tip="Sort descending (directory, filename)"/>
+                <Button Content="Copy All"
+                        Click="OnCopyAllClick"
+                        Height="28" FontSize="11"
+                        Padding="8,2"
+                        Margin="8,0,0,0"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False"
+                        Focusable="False"
+                        ToolTip.Tip="Copy all results to clipboard"/>
             </StackPanel>
 
             <!-- StatusText fills remaining space -->

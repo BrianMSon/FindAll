@@ -280,6 +280,33 @@ public partial class MainWindow : Window
     private void OnSortAscendingClick(object? sender, RoutedEventArgs e) => _viewModel?.SortResults(true);
     private void OnSortDescendingClick(object? sender, RoutedEventArgs e) => _viewModel?.SortResults(false);
 
+    private async void OnCopyAllClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_viewModel == null || Clipboard == null) return;
+
+            var sb = new System.Text.StringBuilder();
+            foreach (var group in _viewModel.GroupedResults)
+            {
+                sb.AppendLine(group.Directory);
+                foreach (var item in group.Items)
+                {
+                    if (item.LineNumber.HasValue)
+                        sb.AppendLine($"\t{item.FileName}\t{item.LineNumber}\t{item.MatchingLine}");
+                    else
+                        sb.AppendLine($"\t{item.FileName}");
+                }
+            }
+
+            await Clipboard.SetTextAsync(sb.ToString());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error in OnCopyAllClick: {ex.Message}");
+        }
+    }
+
     // --- Browse ---
 
     private async void OnBrowseClick(object? sender, RoutedEventArgs e)
