@@ -101,6 +101,34 @@ public partial class MainWindow : Window
                 case Key.End:
                     targetIndex = lastIndex;
                     break;
+                case Key.Up when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+                {
+                    // Move to previous directory group
+                    targetIndex = currentIndex;
+                    for (int i = currentIndex - 1; i >= 0; i--)
+                    {
+                        if (items[i] is DirectoryGroup)
+                        {
+                            targetIndex = i;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case Key.Down when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+                {
+                    // Move to next directory group
+                    targetIndex = currentIndex;
+                    for (int i = currentIndex + 1; i <= lastIndex; i++)
+                    {
+                        if (items[i] is DirectoryGroup)
+                        {
+                            targetIndex = i;
+                            break;
+                        }
+                    }
+                    break;
+                }
                 case Key.Left:
                 case Key.Right:
                 {
