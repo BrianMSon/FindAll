@@ -278,6 +278,18 @@
                         ToolTip.Tip="Toggle sort (ascending / descending)">
                     <TextBlock Text="{Binding SortAscending, Converter={x:Static conv:NullableBoolToTextConverter.SortDirection}}"/>
                 </Button>
+                <Button Click="OnSizeSortToggleClick"
+                        IsEnabled="{Binding !IsSearching}"
+                        Height="28" FontSize="11"
+                        Padding="8,2"
+                        Margin="4,0,0,0"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False"
+                        Focusable="False"
+                        ToolTip.Tip="Sort by file size (ascending / descending)">
+                    <TextBlock Text="{Binding SizeSortAscending, Converter={x:Static conv:NullableBoolToTextConverter.SizeSortDirection}}"/>
+                </Button>
                 <Button Content="Copy"
                         Click="OnCopyVisibleClick"
                         Height="28" FontSize="11"

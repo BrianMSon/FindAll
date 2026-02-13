@@ -434,6 +434,30 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnSizeSortToggleClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null) return;
+        bool ascending = _viewModel.SizeSortAscending != true;
+        _viewModel.SizeSortAscending = ascending;
+        _viewModel.SortBySize(ascending);
+
+        var list = this.FindControl<ListBox>("ResultsList");
+        if (list != null)
+        {
+            var idx = list.SelectedIndex;
+            if (idx >= 0)
+            {
+                var c = list.ContainerFromIndex(idx);
+                if (c is ListBoxItem item)
+                    item.Focus();
+                else
+                    list.Focus();
+            }
+            else
+                list.Focus();
+        }
+    }
+
     private async void OnCopyVisibleClick(object? sender, RoutedEventArgs e)
     {
         try

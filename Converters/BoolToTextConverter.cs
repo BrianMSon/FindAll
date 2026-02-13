@@ -49,6 +49,13 @@ public class NullableBoolToTextConverter : IValueConverter
         FalseText = "Sort ▼"
     };
 
+    public static readonly NullableBoolToTextConverter SizeSortDirection = new()
+    {
+        NullText = "Size",
+        TrueText = "Size ▲",
+        FalseText = "Size ▼"
+    };
+
     public string TrueText { get; set; } = "True";
     public string FalseText { get; set; } = "False";
     public string NullText { get; set; } = "Null";

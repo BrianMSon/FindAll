@@ -146,6 +146,13 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _sortAscending, value);
     }
 
+    private bool? _sizeSortAscending = null;
+    public bool? SizeSortAscending
+    {
+        get => _sizeSortAscending;
+        set => this.RaiseAndSetIfChanged(ref _sizeSortAscending, value);
+    }
+
     private bool _isTextSearch;
     public bool IsTextSearch
     {
@@ -213,6 +220,7 @@ public class MainWindowViewModel : ViewModelBase
         IsPaused = false;
         AllExpanded = true;
         SortAscending = null;
+        SizeSortAscending = null;
         StatusText = "Searching...";
 
         // Normalize drive letter path (e.g. "C:" -> "C:\")
@@ -376,6 +384,7 @@ public class MainWindowViewModel : ViewModelBase
 
     public void SortResults(bool ascending)
     {
+        SizeSortAscending = null;
         var prevSelection = SelectedItem;
         var sorted = ascending
             ? GroupedResults.OrderBy(g => g.Directory).ToList()
@@ -386,6 +395,26 @@ public class MainWindowViewModel : ViewModelBase
             group.Items = ascending
                 ? group.Items.OrderBy(r => r.FileName).ThenBy(r => r.LineNumber).ToList()
                 : group.Items.OrderByDescending(r => r.FileName).ThenByDescending(r => r.LineNumber).ToList();
+        }
+
+        GroupedResults = new ObservableCollection<DirectoryGroup>(sorted);
+        RebuildFlatDisplayItems();
+        RestoreSelection(prevSelection);
+    }
+
+    public void SortBySize(bool ascending)
+    {
+        SortAscending = null;
+        var prevSelection = SelectedItem;
+        var sorted = ascending
+            ? GroupedResults.OrderBy(g => g.Items.Sum(r => r.FileSize)).ToList()
+            : GroupedResults.OrderByDescending(g => g.Items.Sum(r => r.FileSize)).ToList();
+
+        foreach (var group in sorted)
+        {
+            group.Items = ascending
+                ? group.Items.OrderBy(r => r.FileSize).ThenBy(r => r.FileName).ToList()
+                : group.Items.OrderByDescending(r => r.FileSize).ThenByDescending(r => r.FileName).ToList();
         }
 
         GroupedResults = new ObservableCollection<DirectoryGroup>(sorted);
