@@ -54,6 +54,16 @@ public partial class MainWindow : Window
                 }
             }
 
+            var maxFileSize = this.FindControl<NumericUpDown>("MaxFileSizeInput");
+            if (maxFileSize != null)
+            {
+                maxFileSize.Loaded += (_, _) =>
+                {
+                    var tb = maxFileSize.FindDescendantOfType<TextBox>();
+                    if (tb != null) tb.MaxLength = 3;
+                };
+            }
+
             AddHandler(DragDrop.DropEvent, OnDrop);
             AddHandler(DragDrop.DragOverEvent, OnDragOver);
 

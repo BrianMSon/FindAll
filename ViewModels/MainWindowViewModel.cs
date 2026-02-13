@@ -72,11 +72,11 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _caseSensitive, value);
     }
 
-    private decimal _maxFileSizeMB = 50;
-    public decimal MaxFileSizeMB
+    private decimal? _maxFileSizeMB = 50;
+    public decimal? MaxFileSizeMB
     {
         get => _maxFileSizeMB;
-        set => this.RaiseAndSetIfChanged(ref _maxFileSizeMB, Math.Max(1, value));
+        set => this.RaiseAndSetIfChanged(ref _maxFileSizeMB, value);
     }
 
     private bool _isSearching;
@@ -231,7 +231,7 @@ public class MainWindowViewModel : ViewModelBase
             TextSearch = string.IsNullOrWhiteSpace(TextSearch) ? null : TextSearch,
             UseRegex = UseRegex,
             CaseSensitive = CaseSensitive,
-            MaxFileSizeBytes = (long)MaxFileSizeMB * 1024 * 1024
+            MaxFileSizeBytes = (long)Math.Max(1, MaxFileSizeMB ?? 50) * 1024 * 1024
         };
 
         if (options.UseRegex)
