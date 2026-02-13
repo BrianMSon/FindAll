@@ -86,12 +86,16 @@ public partial class MainWindow : Window
                 case Key.PageDown:
                 {
                     int pageSize = Math.Max(1, (int)(list.Bounds.Height / 24));
+                    if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+                        pageSize *= 10;
                     targetIndex = currentIndex < 0 ? 0 : Math.Min(lastIndex, currentIndex + pageSize);
                     break;
                 }
                 case Key.PageUp:
                 {
                     int pageSize = Math.Max(1, (int)(list.Bounds.Height / 24));
+                    if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+                        pageSize *= 10;
                     targetIndex = currentIndex <= 0 ? 0 : Math.Max(0, currentIndex - pageSize);
                     break;
                 }
