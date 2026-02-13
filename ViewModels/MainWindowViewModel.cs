@@ -212,9 +212,14 @@ public class MainWindowViewModel : ViewModelBase
         IsPaused = false;
         StatusText = "Searching...";
 
+        // Normalize drive letter path (e.g. "C:" -> "C:\")
+        var searchPath = SearchPath.Trim();
+        if (searchPath.Length == 2 && searchPath[1] == ':')
+            searchPath += "\\";
+
         var options = new SearchOptions
         {
-            SearchPath = SearchPath,
+            SearchPath = searchPath,
             FilePattern = string.IsNullOrWhiteSpace(FilePattern) ? "*.*" : FilePattern,
             ExcludePattern = ExcludePattern ?? string.Empty,
             FileNameSearch = string.IsNullOrWhiteSpace(FileNameSearch) ? null : FileNameSearch,
