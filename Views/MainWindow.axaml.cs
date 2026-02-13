@@ -218,6 +218,22 @@ public partial class MainWindow : Window
             {
                 OpenFileInExplorer(result.FullPath);
             }
+
+            // Restore focus to list
+            if (sender is ListBox list)
+            {
+                var idx = list.SelectedIndex;
+                if (idx >= 0)
+                {
+                    var c = list.ContainerFromIndex(idx);
+                    if (c is ListBoxItem lbi)
+                        lbi.Focus();
+                    else
+                        list.Focus();
+                }
+                else
+                    list.Focus();
+            }
         }
         catch (Exception ex)
         {
