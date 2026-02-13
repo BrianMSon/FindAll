@@ -56,6 +56,14 @@
         <Style Selector="ListBox[Name=ResultsList] ScrollBar[Orientation=Horizontal]:pointerover /template/ Thumb /template/ Border">
             <Setter Property="Background" Value="#808080"/>
         </Style>
+        <!-- Compact ListBoxItem: remove default padding and min height -->
+        <Style Selector="ListBox[Name=ResultsList] ListBoxItem">
+            <Setter Property="Padding" Value="2,1"/>
+            <Setter Property="MinHeight" Value="0"/>
+        </Style>
+        <Style Selector="ListBox[Name=ResultsList] ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Padding" Value="2,1"/>
+        </Style>
         <!-- Disable hover highlight on ListBox items -->
         <Style Selector="ListBox[Name=ResultsList] ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
