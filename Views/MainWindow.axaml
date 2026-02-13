@@ -84,6 +84,9 @@
 
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
 
+        <!-- Background for top area (rows 0-3) -->
+        <Border Grid.Row="0" Grid.RowSpan="4" Background="#D6E4F0"/>
+
         <!-- Row 0: Search Path -->
         <DockPanel Grid.Row="0" Margin="8,8,8,4">
             <TextBlock Text="Folder:"
@@ -180,7 +183,7 @@
         </DockPanel>
 
         <!-- Row 3: Action Bar with Expand/Collapse -->
-        <Border Grid.Row="3" Background="#D6E4F0" CornerRadius="4" Margin="6,4,6,4" Padding="4,2">
+        <Border Grid.Row="3" Margin="6,4,6,4" Padding="4,2">
         <DockPanel>
             <Button Content="Search(F5)"
                     Command="{Binding SearchCommand}"
