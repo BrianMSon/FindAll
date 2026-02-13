@@ -85,7 +85,7 @@
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
 
         <!-- Background for top area (rows 0-3) -->
-        <Border Grid.Row="0" Grid.RowSpan="4" Background="#D6E4F0"/>
+        <Border Grid.Row="0" Grid.RowSpan="4" Background="#F4F5F3"/>
 
         <!-- Row 0: Search Path -->
         <DockPanel Grid.Row="0" Margin="8,8,8,4">
