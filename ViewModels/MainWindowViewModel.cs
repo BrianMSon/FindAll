@@ -90,8 +90,14 @@ public class MainWindowViewModel : ViewModelBase
     public bool IsPaused
     {
         get => _isPaused;
-        set => this.RaiseAndSetIfChanged(ref _isPaused, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isPaused, value);
+            this.RaisePropertyChanged(nameof(PauseProgressValue));
+        }
     }
+
+    public double PauseProgressValue => _isPaused ? 50 : 0;
 
     private string _statusText = "Ready";
     public string StatusText
