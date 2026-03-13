@@ -597,6 +597,13 @@ public partial class MainWindow : Window
         }
     }
 
+    // --- Banner clicks ---
+
+    private void OnPayPalClick(object? sender, PointerPressedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo("https://www.paypal.com/ncp/payment/YHJZY5GCV2ZAA") { UseShellExecute = true }); } catch { }
+    }
+
     // --- Helpers ---
 
     private static void OpenFile(string filePath)

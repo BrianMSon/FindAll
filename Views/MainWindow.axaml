@@ -95,6 +95,12 @@
                        Foreground="#1E3A5F"
                        FontWeight="Bold"
                        DockPanel.Dock="Left"/>
+            <Image Source="/Assets/PayPal-Donate-Button.png" Height="22" Cursor="Hand"
+                   Name="PayPalButton" PointerPressed="OnPayPalClick"
+                   DockPanel.Dock="Right" Margin="4,0,0,0" VerticalAlignment="Center"/>
+            <Image Source="/Assets/gemini_banner.png" Height="22"
+                   Name="GeminiBanner"
+                   DockPanel.Dock="Right" Margin="4,0,0,0" VerticalAlignment="Center"/>
             <Button Content="Browse"
                     DockPanel.Dock="Right"
                     Margin="4,0,0,0"
