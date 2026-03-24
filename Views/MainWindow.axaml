@@ -12,6 +12,7 @@
 
     <Window.Resources>
         <conv:FileSizeConverter x:Key="FileSizeConverter"/>
+        <conv:EncodingColorConverter x:Key="EncodingColorConverter"/>
     </Window.Resources>
 
     <Window.Styles>
@@ -195,7 +196,20 @@
                           FontSize="12"
                           IsTabStop="False"
                           Focusable="False"
-                          HorizontalContentAlignment="Center"/>
+                          HorizontalContentAlignment="Center"
+                          VerticalContentAlignment="Center"/>
+            <ToggleButton IsChecked="{Binding DetectEncoding}"
+                          Content="Enc"
+                          ToolTip.Tip="Detect file encoding (UTF-8, UTF-8 BOM, ANSI, etc.)&#x0a;Adds encoding column to results"
+                          DockPanel.Dock="Right"
+                          Width="40" Height="32"
+                          Margin="4,0,0,0"
+                          FontSize="11"
+                          FontWeight="Bold"
+                          IsTabStop="False"
+                          Focusable="False"
+                          HorizontalContentAlignment="Center"
+                          VerticalContentAlignment="Center"/>
             <ToggleButton IsChecked="{Binding UseRegex}"
                           Content=".*"
                           ToolTip.Tip="Use Regular Expression (applies to Text and Name search)"
@@ -307,6 +321,67 @@
                         IsTabStop="False"
                         Focusable="False"
                         ToolTip.Tip="Copy all results to clipboard (including collapsed items)"/>
+
+                <!-- Encoding controls (visible when DetectEncoding is on) -->
+                <Border Width="1" Background="#CCC" Margin="8,2"
+                        IsVisible="{Binding DetectEncoding}"/>
+                <TextBlock Text="Enc:"
+                           VerticalAlignment="Center"
+                           Foreground="#1E3A5F"
+                           FontWeight="SemiBold"
+                           Margin="0,0,4,0"
+                           IsVisible="{Binding DetectEncoding}"/>
+                <ComboBox ItemsSource="{Binding EncodingFilterOptions}"
+                          SelectedItem="{Binding EncodingFilter}"
+                          Width="100" Height="28"
+                          VerticalContentAlignment="Center"
+                          IsTabStop="False" Focusable="False"
+                          IsVisible="{Binding DetectEncoding}"
+                          ToolTip.Tip="Filter results by encoding type"/>
+                <Button Content="Sel"
+                        Command="{Binding SelectAllForConvertCommand}"
+                        Height="28" FontSize="11"
+                        Padding="6,2"
+                        Margin="4,0,0,0"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False" Focusable="False"
+                        IsVisible="{Binding DetectEncoding}"
+                        ToolTip.Tip="Select all visible files for conversion"/>
+                <Button Content="Clr"
+                        Command="{Binding SelectNoneForConvertCommand}"
+                        Height="28" FontSize="11"
+                        Padding="6,2"
+                        Margin="2,0,0,0"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False" Focusable="False"
+                        IsVisible="{Binding DetectEncoding}"
+                        ToolTip.Tip="Clear selection"/>
+                <TextBlock Text="&#x2192;"
+                           VerticalAlignment="Center"
+                           Foreground="#1E3A5F"
+                           Margin="4,0,4,0"
+                           IsVisible="{Binding DetectEncoding}"/>
+                <ComboBox ItemsSource="{Binding TargetEncodingOptions}"
+                          SelectedItem="{Binding TargetEncoding}"
+                          Width="100" Height="28"
+                          VerticalContentAlignment="Center"
+                          IsTabStop="False" Focusable="False"
+                          IsVisible="{Binding DetectEncoding}"
+                          ToolTip.Tip="Target encoding for conversion"/>
+                <Button Command="{Binding ConvertCommand}"
+                        Height="28" FontSize="11"
+                        Padding="6,2"
+                        Margin="4,0,0,0"
+                        FontWeight="Bold"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        IsTabStop="False" Focusable="False"
+                        IsVisible="{Binding DetectEncoding}"
+                        ToolTip.Tip="Convert selected files to target encoding">
+                    <TextBlock Text="{Binding ConvertSelectedCount, StringFormat='Conv({0})'}"/>
+                </Button>
             </StackPanel>
 
             <!-- StatusText fills remaining space -->
@@ -378,31 +453,48 @@
                     <!-- Individual result row -->
                     <DataTemplate DataType="models:SearchResult">
                         <Border Height="24">
-                            <Grid ColumnDefinitions="50,Auto,80,130,60,*" VerticalAlignment="Center" Margin="20,0,2,0">
-                                <TextBlock Grid.Column="0"
+                            <Grid ColumnDefinitions="24,42,Auto,80,130,Auto,60,*" VerticalAlignment="Center" Margin="20,0,2,0">
+                                <CheckBox Grid.Column="0"
+                                          IsChecked="{Binding IsSelectedForConvert}"
+                                          Click="OnConvertCheckboxClick"
+                                          IsVisible="{Binding EncodingName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                          VerticalAlignment="Center"
+                                          Margin="0" Padding="0"
+                                          MinWidth="0" Width="20" Height="20"/>
+                                <TextBlock Grid.Column="1"
                                            Text="{Binding DisplayIndex}"
                                            TextAlignment="Right"
                                            Foreground="#94A3B8" FontSize="10"
                                            Margin="0,0,6,0"
-										   VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2"
                                            Text="{Binding FileName}"
                                            Foreground="#1A161B"
                                            ToolTip.Tip="{Binding FullPath}"
-                                           Margin="15,0,0,0"/>
-                                <TextBlock Grid.Column="2"
+                                           Margin="4,0,0,0"/>
+                                <TextBlock Grid.Column="3"
                                            Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
                                            Foreground="#64748B"
                                            Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="3"
+                                <TextBlock Grid.Column="4"
                                            Text="{Binding ModifiedDate, StringFormat=\{0:yyyy-MM-dd HH:mm\}}"
                                            Foreground="#64748B"
                                            Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="4"
+                                <Border Grid.Column="5" Margin="8,2,0,2" Padding="5,0" CornerRadius="3"
+                                        HorizontalAlignment="Left"
+                                        Background="#E8F0FE"
+                                        IsVisible="{Binding EncodingName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                    <TextBlock Text="{Binding EncodingName}"
+                                               Foreground="{Binding EncodingName, Converter={StaticResource EncodingColorConverter}}"
+                                               FontWeight="SemiBold"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Grid.Column="6"
                                            Text="{Binding LineNumber}"
                                            Foreground="#7C3AED"
                                            Margin="8,0,0,0"/>
-                                <TextBlock Grid.Column="5"
+                                <TextBlock Grid.Column="7"
                                            Text="{Binding MatchingLine}"
                                            TextTrimming="CharacterEllipsis"
                                            FontFamily="Consolas, Courier New, monospace"

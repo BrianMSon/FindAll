@@ -166,6 +166,51 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isTextSearch, value);
     }
 
+    // --- Encoding properties ---
+
+    private bool _detectEncoding;
+    public bool DetectEncoding
+    {
+        get => _detectEncoding;
+        set => this.RaiseAndSetIfChanged(ref _detectEncoding, value);
+    }
+
+    private string _encodingFilter = "All";
+    public string EncodingFilter
+    {
+        get => _encodingFilter;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _encodingFilter, value);
+            ApplyEncodingFilter();
+        }
+    }
+
+    public ObservableCollection<string> EncodingFilterOptions { get; } = new(
+        ["All", "UTF-8", "UTF-8 BOM", "ASCII", "ANSI", "UTF-16 LE", "UTF-16 BE", "Binary", "Unknown"]
+    );
+
+    private string _targetEncoding = "UTF-8";
+    public string TargetEncoding
+    {
+        get => _targetEncoding;
+        set => this.RaiseAndSetIfChanged(ref _targetEncoding, value);
+    }
+
+    public ObservableCollection<string> TargetEncodingOptions { get; } = new(
+        ["UTF-8", "UTF-8 BOM", "UTF-16 LE", "UTF-16 BE", "ANSI", "ASCII"]
+    );
+
+    private int _convertSelectedCount;
+    public int ConvertSelectedCount
+    {
+        get => _convertSelectedCount;
+        set => this.RaiseAndSetIfChanged(ref _convertSelectedCount, value);
+    }
+
+    // Snapshot of all results before encoding filter
+    private List<(DirectoryGroup Group, List<SearchResult> AllItems)> _allGroupsSnapshot = new();
+
     private ObservableCollection<DirectoryGroup> _groupedResults = new();
     public ObservableCollection<DirectoryGroup> GroupedResults
     {
@@ -186,6 +231,9 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
     public ReactiveCommand<Unit, Unit> PauseResumeCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
+    public ReactiveCommand<Unit, Unit> ConvertCommand { get; }
+    public ReactiveCommand<Unit, Unit> SelectAllForConvertCommand { get; }
+    public ReactiveCommand<Unit, Unit> SelectNoneForConvertCommand { get; }
 
     public MainWindowViewModel(IFileSearchService searchService)
     {
@@ -197,11 +245,17 @@ public class MainWindowViewModel : ViewModelBase
 
         var canCancel = this.WhenAnyValue(x => x.IsSearching);
         var canPauseResume = this.WhenAnyValue(x => x.IsSearching);
+        var canConvert = this.WhenAnyValue(
+            x => x.IsSearching, x => x.ConvertSelectedCount, x => x.DetectEncoding,
+            (scanning, count, enc) => !scanning && count > 0 && enc);
 
         SearchCommand = ReactiveCommand.CreateFromTask(ExecuteSearchAsync, canSearch);
         CancelCommand = ReactiveCommand.Create(ExecuteCancel, canCancel);
         PauseResumeCommand = ReactiveCommand.Create(ExecutePauseResume, canPauseResume);
         OpenFileCommand = ReactiveCommand.Create(ExecuteOpenFile);
+        ConvertCommand = ReactiveCommand.CreateFromTask(ExecuteConvertAsync, canConvert);
+        SelectAllForConvertCommand = ReactiveCommand.Create(ExecuteSelectAllForConvert);
+        SelectNoneForConvertCommand = ReactiveCommand.Create(ExecuteSelectNoneForConvert);
 
         this.WhenAnyValue(x => x.TextSearch)
             .Select(t => !string.IsNullOrWhiteSpace(t))
@@ -245,7 +299,8 @@ public class MainWindowViewModel : ViewModelBase
             TextSearch = string.IsNullOrWhiteSpace(TextSearch) ? null : TextSearch,
             UseRegex = UseRegex,
             CaseSensitive = CaseSensitive,
-            MaxFileSizeBytes = (long)Math.Max(1, MaxFileSizeMB ?? 50) * 1024 * 1024
+            MaxFileSizeBytes = (long)Math.Max(1, MaxFileSizeMB ?? 50) * 1024 * 1024,
+            DetectEncoding = DetectEncoding
         };
 
         if (options.UseRegex)
@@ -322,7 +377,21 @@ public class MainWindowViewModel : ViewModelBase
                 SetAllGroupsExpanded(false);
                 AllExpanded = false;
             }
-            StatusText = $"Done. {resultCount} results in {GroupedResults.Count} folders ({fileCount} files scanned)";
+            // Save snapshot for encoding filter
+            _allGroupsSnapshot = GroupedResults.Select(g => (g, g.Items.ToList())).ToList();
+            EncodingFilter = "All";
+
+            var statusMsg = $"Done. {resultCount} results in {GroupedResults.Count} folders ({fileCount} files scanned)";
+            if (DetectEncoding)
+            {
+                var allItems = GroupedResults.SelectMany(g => g.Items).ToList();
+                var encSummary = allItems.Where(r => r.EncodingName != null)
+                                         .GroupBy(r => r.EncodingName)
+                                         .OrderByDescending(g => g.Count())
+                                         .Select(g => $"{g.Key}: {g.Count()}");
+                statusMsg += "  |  " + string.Join(", ", encSummary);
+            }
+            StatusText = statusMsg;
         }
         catch (OperationCanceledException)
         {
@@ -503,6 +572,14 @@ public class MainWindowViewModel : ViewModelBase
                 return;
             }
 
+            // Build encoding/BOM info line
+            var encInfo = "";
+            if (result.EncodingName != null)
+            {
+                var bomDesc = await Task.Run(() => EncodingDetectorService.GetBomDescription(result.FullPath), ct);
+                encInfo = $"\nEncoding: {result.EncodingName}  |  BOM: {bomDesc}";
+            }
+
             if (result.LineNumber.HasValue)
             {
                 var lines = await Task.Run(() =>
@@ -512,18 +589,18 @@ public class MainWindowViewModel : ViewModelBase
 
                 if (lines != null && lines.Any())
                 {
-                    PreviewText = string.Join(Environment.NewLine, lines);
+                    PreviewText = string.Join(Environment.NewLine, lines) + encInfo;
                     IsPreviewVisible = true;
                 }
                 else
                 {
-                    PreviewText = "No preview available";
+                    PreviewText = "No preview available" + encInfo;
                     IsPreviewVisible = true;
                 }
             }
             else
             {
-                PreviewText = $"File: {result.FullPath}\nSize: {result.FileSize:N0} bytes\nModified: {result.ModifiedDate:yyyy-MM-dd HH:mm:ss}";
+                PreviewText = $"File: {result.FullPath}\nSize: {result.FileSize:N0} bytes\nModified: {result.ModifiedDate:yyyy-MM-dd HH:mm:ss}" + encInfo;
                 IsPreviewVisible = true;
             }
         }
@@ -536,6 +613,127 @@ public class MainWindowViewModel : ViewModelBase
                 IsPreviewVisible = true;
             }
         }
+    }
+    // --- Encoding filter ---
+
+    private void ApplyEncodingFilter()
+    {
+        if (_allGroupsSnapshot.Count == 0) return;
+
+        _groupLookup.Clear();
+        var newGroups = new ObservableCollection<DirectoryGroup>();
+
+        foreach (var (origGroup, allItems) in _allGroupsSnapshot)
+        {
+            var filtered = _encodingFilter == "All"
+                ? allItems
+                : allItems.Where(r => r.EncodingName == _encodingFilter).ToList();
+
+            if (filtered.Count == 0) continue;
+
+            var group = new DirectoryGroup
+            {
+                Directory = origGroup.Directory,
+                IsExpanded = AllExpanded
+            };
+            group.Items = filtered;
+            _groupLookup[group.Directory] = group;
+            newGroups.Add(group);
+        }
+
+        GroupedResults = newGroups;
+        RebuildFlatDisplayItems();
+        ConvertSelectedCount = 0;
+    }
+
+    // --- Encoding selection ---
+
+    private void ExecuteSelectAllForConvert()
+    {
+        foreach (var group in GroupedResults)
+            foreach (var item in group.Items)
+                item.IsSelectedForConvert = true;
+        UpdateConvertSelectedCount();
+    }
+
+    private void ExecuteSelectNoneForConvert()
+    {
+        foreach (var group in GroupedResults)
+            foreach (var item in group.Items)
+                item.IsSelectedForConvert = false;
+        UpdateConvertSelectedCount();
+    }
+
+    public void ToggleConvertSelection(SearchResult item)
+    {
+        item.IsSelectedForConvert = !item.IsSelectedForConvert;
+        UpdateConvertSelectedCount();
+    }
+
+    public void UpdateConvertSelectedCount()
+    {
+        ConvertSelectedCount = GroupedResults.SelectMany(g => g.Items).Count(i => i.IsSelectedForConvert);
+    }
+
+    // --- Encoding convert ---
+
+    private async Task ExecuteConvertAsync()
+    {
+        var targetType = TargetEncoding switch
+        {
+            "UTF-8" => EncodingType.UTF8,
+            "UTF-8 BOM" => EncodingType.UTF8_BOM,
+            "UTF-16 LE" => EncodingType.UTF16_LE,
+            "UTF-16 BE" => EncodingType.UTF16_BE,
+            "ANSI" => EncodingType.ANSI,
+            "ASCII" => EncodingType.ASCII,
+            _ => EncodingType.UTF8
+        };
+
+        var selectedFiles = GroupedResults.SelectMany(g => g.Items)
+                                          .Where(i => i.IsSelectedForConvert && i.EncodingName != null)
+                                          .ToList();
+
+        // Skip files already in target encoding
+        var toConvert = selectedFiles.Where(f => f.EncodingName != targetType.ToDisplayString()).ToList();
+
+        if (toConvert.Count == 0)
+        {
+            StatusText = "No files to convert (already in target encoding or none selected)";
+            return;
+        }
+
+        IsSearching = true;
+        StatusText = $"Converting {toConvert.Count} files to {TargetEncoding}...";
+
+        int converted = 0, failed = 0;
+        await Task.Run(() =>
+        {
+            foreach (var file in toConvert)
+            {
+                try
+                {
+                    var sourceType = EncodingDetectorService.DetectEncoding(file.FullPath);
+                    EncodingDetectorService.ConvertFile(file.FullPath, sourceType, targetType);
+                    file.EncodingName = targetType.ToDisplayString();
+                    converted++;
+                }
+                catch { failed++; }
+            }
+        });
+
+        foreach (var file in toConvert)
+            file.IsSelectedForConvert = false;
+        UpdateConvertSelectedCount();
+        RebuildFlatDisplayItems();
+
+        // Update snapshot with new encoding names
+        _allGroupsSnapshot = GroupedResults.Select(g => (g, g.Items.ToList())).ToList();
+
+        IsSearching = false;
+        StatusText = failed == 0
+            ? $"Converted {converted} files to {TargetEncoding}"
+            : $"Converted {converted} files, {failed} failed";
     }
 }
 

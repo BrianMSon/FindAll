@@ -194,6 +194,18 @@ public partial class MainWindow : Window
                     e.Handled = true;
                     return;
                 }
+                case Key.Space:
+                {
+                    if (currentIndex >= 0 && currentIndex < items.Count && items[currentIndex] is SearchResult sr && sr.EncodingName != null)
+                    {
+                        _viewModel.ToggleConvertSelection(sr);
+                    }
+                    var spaceContainer = list.ContainerFromIndex(currentIndex);
+                    if (spaceContainer is ListBoxItem spaceLbi) spaceLbi.Focus();
+                    else list.Focus();
+                    e.Handled = true;
+                    return;
+                }
                 default:
                     return;
             }
@@ -458,6 +470,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnConvertCheckboxClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel?.UpdateConvertSelectedCount();
+    }
+
     private async void OnCopyVisibleClick(object? sender, RoutedEventArgs e)
     {
         try
@@ -473,10 +490,11 @@ public partial class MainWindow : Window
                 }
                 else if (item is SearchResult result)
                 {
+                    var enc = result.EncodingName != null ? $"\t{result.EncodingName}" : "";
                     if (result.LineNumber.HasValue)
-                        sb.AppendLine($"\t{result.FileName}\t{result.LineNumber}\t{result.MatchingLine}");
+                        sb.AppendLine($"\t{result.FileName}{enc}\t{result.LineNumber}\t{result.MatchingLine}");
                     else
-                        sb.AppendLine($"\t{result.FileName}");
+                        sb.AppendLine($"\t{result.FileName}{enc}");
                 }
             }
 
@@ -500,10 +518,11 @@ public partial class MainWindow : Window
                 sb.AppendLine(group.Directory);
                 foreach (var item in group.Items)
                 {
+                    var enc = item.EncodingName != null ? $"\t{item.EncodingName}" : "";
                     if (item.LineNumber.HasValue)
-                        sb.AppendLine($"\t{item.FileName}\t{item.LineNumber}\t{item.MatchingLine}");
+                        sb.AppendLine($"\t{item.FileName}{enc}\t{item.LineNumber}\t{item.MatchingLine}");
                     else
-                        sb.AppendLine($"\t{item.FileName}");
+                        sb.AppendLine($"\t{item.FileName}{enc}");
                 }
             }
 

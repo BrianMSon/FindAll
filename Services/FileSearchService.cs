@@ -209,6 +209,14 @@ public class FileSearchService : IFileSearchService
         {
             var fileInfo = new FileInfo(filePath);
 
+            // Detect encoding once per file if option is enabled
+            string? encodingName = null;
+            if (options.DetectEncoding)
+            {
+                var encType = EncodingDetectorService.DetectEncoding(filePath);
+                encodingName = encType.ToDisplayString();
+            }
+
             // File name / folder name search filter
             if (isFileNameSearch)
             {
@@ -241,7 +249,8 @@ public class FileSearchService : IFileSearchService
                     FullPath = filePath,
                     Directory = fileInfo.DirectoryName ?? string.Empty,
                     FileSize = fileInfo.Length,
-                    ModifiedDate = fileInfo.LastWriteTime
+                    ModifiedDate = fileInfo.LastWriteTime,
+                    EncodingName = encodingName
                 });
                 return results;
             }
@@ -274,7 +283,8 @@ public class FileSearchService : IFileSearchService
                             LineNumber = lineNum,
                             MatchingLine = line.TrimStart() is var trimmed1 && trimmed1.Length > 500 ? trimmed1.Substring(0, 200) + "..." : trimmed1,
                             MatchStartIndex = match.Index,
-                            MatchLength = match.Length
+                            MatchLength = match.Length,
+                            EncodingName = encodingName
                         });
                     }
                 }
@@ -293,7 +303,8 @@ public class FileSearchService : IFileSearchService
                             LineNumber = lineNum,
                             MatchingLine = line.TrimStart() is var trimmed2 && trimmed2.Length > 500 ? trimmed2.Substring(0, 200) + "..." : trimmed2,
                             MatchStartIndex = idx,
-                            MatchLength = options.TextSearch!.Length
+                            MatchLength = options.TextSearch!.Length,
+                            EncodingName = encodingName
                         });
                     }
                 }

@@ -12,4 +12,5 @@ public class SearchOptions
     public bool UseRegex { get; set; }
     public bool CaseSensitive { get; set; }
     public long MaxFileSizeBytes { get; set; } = 50 * 1024 * 1024; // 50MB
+    public bool DetectEncoding { get; set; }
 }

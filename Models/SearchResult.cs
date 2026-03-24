@@ -1,6 +1,8 @@
+using ReactiveUI;
+
 namespace FindAll.Models;
 
-public class SearchResult
+public class SearchResult : ReactiveObject
 {
     public int DisplayIndex { get; set; }
     public string FileName { get; set; } = string.Empty;
@@ -12,4 +14,12 @@ public class SearchResult
     public string? MatchingLine { get; set; }
     public int? MatchStartIndex { get; set; }
     public int? MatchLength { get; set; }
+    public string? EncodingName { get; set; }
+
+    private bool _isSelectedForConvert;
+    public bool IsSelectedForConvert
+    {
+        get => _isSelectedForConvert;
+        set => this.RaiseAndSetIfChanged(ref _isSelectedForConvert, value);
+    }
 }
