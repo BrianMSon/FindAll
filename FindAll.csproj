@@ -13,10 +13,17 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaXaml Remove="publish\**" />
+    <Compile Remove="publish\**" />
+    <EmbeddedResource Remove="publish\**" />
+    <None Remove="publish\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\gemini_banner.png" />
     <AvaloniaResource Include="Assets\PayPal-Donate-Button.png" />
+    <AvaloniaResource Include="icon.png" />
   </ItemGroup>
 
   <ItemGroup>
